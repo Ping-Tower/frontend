@@ -1,0 +1,399 @@
+import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router'
+import logo from '/pingtower logo.png'
+
+const PING_HOSTS = [
+  { host: 'api.acme.com:443',    proto: 'HTTPS', ms: 98,   code: 200,  ok: true  },
+  { host: 'db.staging.internal', proto: 'TCP',   ms: null, code: null, ok: false },
+  { host: 'auth.acme.com:443',   proto: 'HTTPS', ms: 64,   code: 200,  ok: true  },
+  { host: 'health.acme.com:80',  proto: 'HTTP',  ms: 42,   code: 200,  ok: true  },
+  { host: 'gw-legacy.acme.com',  proto: 'HTTP',  ms: null, code: 503,  ok: false },
+]
+
+type PingLine = {
+  id: number
+  host: string
+  ms: number | null
+  code: number | null
+  ok: boolean
+  time: string
+}
+
+function buildSpark(color: string, count = 16) {
+  return Array.from({ length: count }, () => ({
+    h: Math.max(4, Math.random() * 24),
+    color,
+  }))
+}
+
+const DEMO_SERVERS = [
+  {
+    name: 'Production API', host: 'api.acme.com:443 · HTTPS',
+    status: 'UP', uptime: '99.94%', fill: '99.9%',
+    fillColor: '#4ade80', uptimeColor: '#4ade80',
+    stats: [{ l: 'AVG', v: '112 ms' }, { l: 'P90', v: '187 ms' }, { l: 'P99', v: '334 ms' }],
+    sparkColor: '#4ade80', sparkId: 0,
+  },
+  {
+    name: 'Staging DB', host: 'db.staging.internal:5432 · TCP',
+    status: 'DOWN', uptime: '82.31%', fill: '82%',
+    fillColor: '#f87171', uptimeColor: '#f87171',
+    stats: [{ l: 'AVG', v: '— ms' }, { l: 'Last seen', v: '3 min ago' }],
+    sparkColor: '#f87171', sparkId: 1,
+  },
+  {
+    name: 'Auth Service', host: 'auth.acme.com:443 · HTTPS',
+    status: 'UP', uptime: '100.00%', fill: '100%',
+    fillColor: '#4ade80', uptimeColor: '#4ade80',
+    stats: [{ l: 'AVG', v: '68 ms' }, { l: 'P90', v: '110 ms' }, { l: 'P99', v: '198 ms' }],
+    sparkColor: '#4ade80', sparkId: 2,
+  },
+  {
+    name: 'Legacy Gateway', host: 'gw-legacy.acme.com:8080 · HTTP',
+    status: 'UNKNOWN', uptime: '71.42%', fill: '71%',
+    fillColor: '#fbbf24', uptimeColor: '#fbbf24',
+    stats: [{ l: 'AVG', v: '—' }, { l: 'Status', v: 'No data' }],
+    sparkColor: '#fbbf24', sparkId: 3,
+  },
+]
+
+const STATUS_STYLE: Record<string, { bg: string; border: string; color: string; dot: string }> = {
+  UP:      { bg: 'rgba(74,222,128,0.08)',  border: 'rgba(74,222,128,0.22)',  color: '#4ade80', dot: '●' },
+  DOWN:    { bg: 'rgba(248,113,113,0.08)', border: 'rgba(248,113,113,0.22)', color: '#f87171', dot: '●' },
+  UNKNOWN: { bg: 'rgba(107,114,128,0.08)', border: 'rgba(107,114,128,0.16)', color: '#6b7280', dot: '○' },
+}
+
+export function LandingPage() {
+  const [lines, setLines] = useState<PingLine[]>([])
+  const lineCounter = useRef(0)
+  const [sparks, setSparks] = useState(() => [
+    buildSpark('#4ade80'),
+    buildSpark('#f87171'),
+    buildSpark('#4ade80'),
+    buildSpark('#fbbf24'),
+  ])
+
+  // Terminal animation
+  useEffect(() => {
+    function addLine() {
+      const h = PING_HOSTS[lineCounter.current % PING_HOSTS.length]
+      const ms = h.ms ? h.ms + Math.round((Math.random() - 0.5) * 20) : null
+      const time = new Date().toLocaleTimeString('en', { hour12: false })
+      setLines((prev) => {
+        const next = [...prev, { id: lineCounter.current, host: h.host, ms, code: h.code, ok: h.ok, time }]
+        return next.slice(-8)
+      })
+      lineCounter.current++
+    }
+    for (let i = 0; i < 4; i++) addLine()
+    const id = setInterval(addLine, 1600)
+    return () => clearInterval(id)
+  }, [])
+
+  // Spark refresh
+  useEffect(() => {
+    const id = setInterval(() => {
+      setSparks((prev) => [
+        buildSpark('#4ade80'),
+        prev[1],
+        buildSpark('#4ade80'),
+        prev[3],
+      ])
+    }, 3000)
+    return () => clearInterval(id)
+  }, [])
+
+  // Scroll reveal
+  useEffect(() => {
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => { if (e.isIntersecting) e.target.classList.add('visible') }),
+      { threshold: 0.1 }
+    )
+    document.querySelectorAll('.lp-reveal').forEach((el) => io.observe(el))
+    return () => io.disconnect()
+  }, [])
+
+  return (
+    <div style={{ background: '#080809', color: '#f2f2f4', fontFamily: "'JetBrains Mono', monospace", overflowX: 'hidden', minHeight: '100dvh' }}>
+      <div className="lp-grid-bg" />
+
+      {/* NAV */}
+      <nav className="lp-nav">
+        <a href="#" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: '#f2f2f4' }}>
+          <img src={logo} alt="PingTower" style={{ height: 22, objectFit: 'contain' }} />
+          <span style={{ fontSize: '.9rem', fontWeight: 700, letterSpacing: '-0.02em' }}>PingTower</span>
+        </a>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
+          <a href="#features" style={{ fontSize: '.78rem', color: '#7a7a88', textDecoration: 'none' }}>Features</a>
+          <a href="#how" style={{ fontSize: '.78rem', color: '#7a7a88', textDecoration: 'none' }}>How it works</a>
+          <a href="#demo" style={{ fontSize: '.78rem', color: '#7a7a88', textDecoration: 'none' }}>Dashboard</a>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Link to="/login" style={{ fontSize: '.78rem', fontWeight: 600, color: '#7a7a88', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>
+            Sign in
+          </Link>
+          <Link to="/register" style={{ fontSize: '.78rem', fontWeight: 700, background: '#4ade80', color: '#080809', border: 'none', borderRadius: 5, padding: '8px 16px', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}>
+            Get started
+          </Link>
+        </div>
+      </nav>
+
+      {/* HERO */}
+      <section style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '120px 24px 80px', textAlign: 'center', position: 'relative', overflow: 'hidden', zIndex: 1 }}>
+        <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 1, height: '60%', background: 'linear-gradient(180deg,transparent,#4ade80,transparent)', opacity: .35, pointerEvents: 'none', animation: 'lp-beam-pulse 3s ease-in-out infinite' }} />
+        <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 600, height: 300, borderRadius: '50%', background: 'radial-gradient(ellipse,rgba(74,222,128,0.07) 0%,transparent 70%)', pointerEvents: 'none' }} />
+
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid rgba(74,222,128,0.25)', background: 'rgba(74,222,128,0.07)', color: '#4ade80', borderRadius: 4, padding: '5px 12px', fontSize: '.72rem', fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 28, animation: 'lp-fade-up .6s ease both' }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ade80', animation: 'lp-blink 1.4s ease-in-out infinite', display: 'inline-block' }} />
+          Real-time monitoring · Instant alerts
+        </div>
+
+        <h1 style={{ fontSize: 'clamp(2.6rem,6vw,5.2rem)', fontWeight: 700, letterSpacing: '-0.045em', lineHeight: .95, color: '#f2f2f4', marginBottom: 22, animation: 'lp-fade-up .6s .1s ease both' }}>
+          Know when your<br />servers go <em style={{ color: '#4ade80', fontStyle: 'normal' }}>down</em>.<br />Before anyone else.
+        </h1>
+
+        <p style={{ maxWidth: 520, fontSize: '.9rem', fontWeight: 400, color: '#7a7a88', lineHeight: 1.65, marginBottom: 36, animation: 'lp-fade-up .6s .2s ease both' }}>
+          PingTower checks your HTTP, HTTPS, TCP, and ICMP endpoints every few seconds. Get alerted the moment something breaks — via Telegram, email, or whatever you connect.
+        </p>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 64, animation: 'lp-fade-up .6s .3s ease both' }}>
+          <Link to="/register" style={{ fontSize: '.85rem', fontWeight: 700, background: '#4ade80', color: '#080809', border: 'none', borderRadius: 6, padding: '12px 24px', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}>
+            Start monitoring free →
+          </Link>
+          <a href="#demo" style={{ fontSize: '.85rem', fontWeight: 600, background: '#161619', color: '#f2f2f4', border: '1px solid rgba(255,255,255,0.11)', borderRadius: 6, padding: '12px 24px', cursor: 'pointer', textDecoration: 'none' }}>
+            View dashboard
+          </a>
+        </div>
+
+        {/* Terminal */}
+        <div style={{ width: '100%', maxWidth: 700, animation: 'lp-fade-up .6s .4s ease both', border: '1px solid rgba(255,255,255,0.11)', borderRadius: 8, overflow: 'hidden', boxShadow: '0 0 0 1px rgba(74,222,128,0.05),0 32px 80px rgba(0,0,0,.6)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 14px', background: '#161619', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#f87171' }} />
+            <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#fbbf24' }} />
+            <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#4ade80' }} />
+            <span style={{ fontSize: '.72rem', color: '#3a3a48', marginLeft: 'auto', marginRight: 'auto', letterSpacing: '.04em' }}>pingtower — live checks</span>
+          </div>
+          <div style={{ background: '#0f0f12', padding: 16, fontSize: '.78rem', color: '#7a7a88', lineHeight: 1.8, minHeight: 180, textAlign: 'left' }}>
+            {lines.map((line) => (
+              <div key={line.id} style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '2px 0', animation: 'lp-line-in .2s ease forwards' }}>
+                <span style={{ fontWeight: 700, minWidth: 16, color: line.ok ? '#4ade80' : '#f87171' }}>{line.ok ? '✓' : '✗'}</span>
+                <span style={{ color: '#3a3a48', fontSize: '.72rem' }}>[{line.time}]</span>
+                <span style={{ color: '#f2f2f4', fontWeight: 600, minWidth: 200 }}>{line.host}</span>
+                <span style={{ color: '#3a3a48', fontSize: '.72rem', minWidth: 60 }}>{line.ms ? `${line.ms}ms` : '—'}</span>
+                <span style={{ fontSize: '.72rem', color: line.ok ? '#4ade80' : '#f87171' }}>{line.code ?? 'TIMEOUT'}</span>
+              </div>
+            ))}
+            <span style={{ display: 'inline-block', width: 8, height: 14, background: '#4ade80', animation: 'lp-blink 1s step-end infinite', verticalAlign: 'middle', marginLeft: 2 }} />
+          </div>
+        </div>
+      </section>
+
+      {/* STATS */}
+      <section className="lp-reveal" id="features" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', background: '#0f0f12', zIndex: 1, position: 'relative' }}>
+        {[
+          { num: '99.97%', label: 'Average uptime tracked' },
+          { num: '<10 sec', label: 'Detection time' },
+          { num: '4', label: 'Protocols supported' },
+          { num: 'Instant', label: 'Telegram & email alerts' },
+        ].map((s, i, arr) => (
+          <div key={s.label} style={{ flex: 1, textAlign: 'center', padding: '36px 20px', borderRight: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+            <div style={{ fontSize: '2.4rem', fontWeight: 700, letterSpacing: '-0.04em', color: '#f2f2f4', lineHeight: 1 }}>
+              <span style={{ color: '#4ade80' }}>{s.num.replace(/[^<>]/g, (c) => c)}</span>
+            </div>
+            <div style={{ fontSize: '.72rem', color: '#7a7a88', marginTop: 8, letterSpacing: '.05em', textTransform: 'uppercase' }}>{s.label}</div>
+          </div>
+        ))}
+      </section>
+
+      {/* FEATURES */}
+      <section className="lp-reveal" style={{ padding: '100px 48px', maxWidth: 1200, margin: '0 auto', position: 'relative', zIndex: 1 }}>
+        <div style={{ fontSize: '.72rem', fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: '#4ade80', marginBottom: 16 }}>Features</div>
+        <div style={{ fontSize: 'clamp(1.8rem,3vw,2.8rem)', fontWeight: 700, letterSpacing: '-0.04em', color: '#f2f2f4', lineHeight: 1.05, marginBottom: 60 }}>
+          Everything you need.<br />Nothing you don't.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, overflow: 'hidden' }}>
+          {FEATURES.map((f) => (
+            <FeatureCard key={f.title} {...f} />
+          ))}
+        </div>
+      </section>
+
+      {/* HOW IT WORKS */}
+      <section className="lp-reveal" id="how" style={{ padding: '80px 48px', maxWidth: 900, margin: '0 auto', position: 'relative', zIndex: 1 }}>
+        <div style={{ fontSize: '.72rem', fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: '#4ade80', marginBottom: 16 }}>How it works</div>
+        <div style={{ fontSize: 'clamp(1.8rem,3vw,2.8rem)', fontWeight: 700, letterSpacing: '-0.04em', color: '#f2f2f4', lineHeight: 1.05, marginBottom: 32 }}>
+          Up and running<br />in 60 seconds.
+        </div>
+        <div style={{ border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, overflow: 'hidden' }}>
+          {STEPS.map((step, i) => (
+            <div key={step.title} style={{ display: 'flex', alignItems: 'flex-start', gap: 24, padding: '28px 32px', borderBottom: i < STEPS.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none', background: '#0f0f12' }}>
+              <div style={{ fontSize: '.72rem', fontWeight: 700, color: '#3a3a48', letterSpacing: '.04em', minWidth: 24, paddingTop: 2 }}>0{i + 1}</div>
+              <div>
+                <div style={{ fontSize: '.95rem', fontWeight: 700, color: '#f2f2f4', marginBottom: 6 }}>{step.title}</div>
+                <div style={{ fontSize: '.8rem', color: '#7a7a88', lineHeight: 1.6 }}>{step.desc}</div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, background: '#161619', border: '1px solid rgba(255,255,255,0.11)', borderRadius: 4, padding: '6px 12px', fontSize: '.75rem', color: '#7a7a88' }}
+                  dangerouslySetInnerHTML={{ __html: step.code }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* DEMO */}
+      <section className="lp-reveal" id="demo" style={{ padding: '80px 48px', maxWidth: 1200, margin: '0 auto', position: 'relative', zIndex: 1 }}>
+        <div style={{ fontSize: '.72rem', fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: '#4ade80', marginBottom: 16 }}>Live dashboard</div>
+        <div style={{ fontSize: 'clamp(1.8rem,3vw,2.8rem)', fontWeight: 700, letterSpacing: '-0.04em', color: '#f2f2f4', lineHeight: 1.05, marginBottom: 32 }}>
+          Your infrastructure,<br />at a glance.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 16 }}>
+          {DEMO_SERVERS.map((srv) => {
+            const st = STATUS_STYLE[srv.status]
+            const spark = sparks[srv.sparkId]
+            return (
+              <div key={srv.name} style={{ background: '#0f0f12', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                  <div>
+                    <div style={{ fontSize: '.85rem', fontWeight: 700, color: '#f2f2f4', marginBottom: 3 }}>{srv.name}</div>
+                    <div style={{ fontSize: '.72rem', color: '#7a7a88' }}>{srv.host}</div>
+                  </div>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: st.bg, border: `1px solid ${st.border}`, color: st.color, borderRadius: 4, padding: '3px 9px', fontSize: '.72rem', fontWeight: 700 }}>
+                    {st.dot} {srv.status}
+                  </span>
+                </div>
+                <div style={{ height: 6, borderRadius: 3, background: '#161619', overflow: 'hidden', marginBottom: 12 }}>
+                  <div style={{ height: '100%', borderRadius: 3, background: srv.fillColor, width: srv.fill, transition: 'width 1s ease' }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+                  <span style={{ fontSize: '.68rem', color: '#3a3a48' }}>Uptime</span>
+                  <span style={{ fontSize: '.72rem', fontWeight: 700, color: srv.uptimeColor }}>{srv.uptime}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end' }}>
+                  {srv.stats.map((s) => (
+                    <div key={s.l}>
+                      <div style={{ fontSize: '.68rem', color: '#7a7a88', marginBottom: 4 }}>{s.l}</div>
+                      <div style={{ fontSize: '.9rem', fontWeight: 700, color: '#f2f2f4' }}>{s.v}</div>
+                    </div>
+                  ))}
+                  <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'flex-end', gap: 2, height: 24 }}>
+                    {spark.map((b, i) => (
+                      <div key={i} style={{ width: 3, borderRadius: 1, background: b.color, opacity: .6, height: b.h, transition: 'height .3s' }} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="lp-reveal" style={{ padding: '120px 48px', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.06)', position: 'relative', overflow: 'hidden', zIndex: 1 }}>
+        <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 800, height: 400, background: 'radial-gradient(ellipse,rgba(74,222,128,0.06) 0%,transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ fontSize: '.72rem', fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: '#4ade80', marginBottom: 20 }}>Get started</div>
+        <h2 style={{ fontSize: 'clamp(2rem,4vw,3.8rem)', fontWeight: 700, letterSpacing: '-0.045em', color: '#f2f2f4', marginBottom: 16, lineHeight: 1 }}>
+          Stop finding out from<br />your users that it's down.
+        </h2>
+        <p style={{ fontSize: '.9rem', color: '#7a7a88', marginBottom: 36, lineHeight: 1.65 }}>
+          Set up your first monitor in under a minute.<br />No credit card. No infrastructure. Just uptime.
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+          <Link to="/register" style={{ fontSize: '.85rem', fontWeight: 700, background: '#4ade80', color: '#080809', border: 'none', borderRadius: 6, padding: '12px 24px', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}>
+            Start monitoring free →
+          </Link>
+          <span style={{ fontSize: '.75rem', color: '#3a3a48' }}>No credit card required</span>
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '32px 48px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0f0f12', position: 'relative', zIndex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src={logo} alt="PingTower" style={{ height: 18, opacity: .5 }} />
+          <span style={{ fontSize: '.75rem', color: '#3a3a48', fontWeight: 600 }}>PingTower · Uptime monitoring</span>
+        </div>
+        <div style={{ display: 'flex', gap: 24 }}>
+          {['Docs', 'GitHub', 'Status', 'Privacy'].map((l) => (
+            <a key={l} href="#" style={{ fontSize: '.72rem', color: '#3a3a48', textDecoration: 'none' }}>{l}</a>
+          ))}
+        </div>
+        <div style={{ fontSize: '.72rem', color: '#3a3a48' }}>Built by semao0</div>
+      </footer>
+    </div>
+  )
+}
+
+function FeatureCard({ title, desc, tag, icon }: { title: string; desc: string; tag: string; icon: React.ReactNode }) {
+  const [hovered, setHovered] = useState(false)
+  return (
+    <div
+      style={{ background: hovered ? '#161619' : '#0f0f12', padding: 32, transition: 'background .15s', cursor: 'default' }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div style={{ width: 36, height: 36, borderRadius: 6, background: 'rgba(74,222,128,0.10)', border: '1px solid rgba(74,222,128,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18, color: '#4ade80' }}>
+        {icon}
+      </div>
+      <div style={{ fontSize: '.95rem', fontWeight: 700, color: '#f2f2f4', marginBottom: 8, letterSpacing: '-0.01em' }}>{title}</div>
+      <div style={{ fontSize: '.8rem', color: '#7a7a88', lineHeight: 1.65 }}>{desc}</div>
+      <div style={{ display: 'inline-block', marginTop: 16, fontSize: '.68rem', fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: '#4ade80', border: '1px solid rgba(74,222,128,0.2)', borderRadius: 3, padding: '3px 8px' }}>
+        {tag}
+      </div>
+    </div>
+  )
+}
+
+const FEATURES = [
+  {
+    title: 'Real-time latency tracking',
+    desc: 'Every check records response time. View avg, P50, P90, P99 across any time window — 30 minutes to 24 hours.',
+    tag: 'Latency · P99 · Charts',
+    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,
+  },
+  {
+    title: 'Instant alerts',
+    desc: 'Get notified the second a server goes down — and the second it recovers. Telegram bot + email, configurable per server.',
+    tag: 'Telegram · Email',
+    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
+  },
+  {
+    title: 'Multi-protocol support',
+    desc: 'Monitor HTTP, HTTPS, TCP, and ICMP endpoints. Track status codes, TLS versions, DNS lookup times, RTT, and packet loss — per protocol.',
+    tag: 'HTTP · HTTPS · TCP · ICMP',
+    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="5" rx="2"/><rect x="2" y="10" width="20" height="5" rx="2"/><rect x="2" y="17" width="20" height="4" rx="2"/><circle cx="18" cy="5.5" r="1" fill="currentColor"/><circle cx="18" cy="12.5" r="1" fill="currentColor"/></svg>,
+  },
+  {
+    title: 'Configurable intervals',
+    desc: 'Set check intervals per server. Adjust retries and failure thresholds to avoid alert fatigue on flapping endpoints.',
+    tag: 'Interval · Retries · Threshold',
+    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>,
+  },
+  {
+    title: 'Live status stream',
+    desc: 'Dashboard updates in real-time via WebSocket. Status changes propagate instantly — no manual refresh needed.',
+    tag: 'WebSocket · SignalR',
+    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>,
+  },
+  {
+    title: 'Uptime history',
+    desc: 'Full audit trail of every check. 24-hour baseline uptime and P90 latency available on every server detail page.',
+    tag: 'History · Baseline · SLA',
+    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+  },
+]
+
+const STEPS = [
+  {
+    title: 'Add your server',
+    desc: 'Enter a hostname, port, and protocol. Give it a name. That\'s it — monitoring starts immediately.',
+    code: '<em style="color:#4ade80">+ Add server</em> → api.acme.com:443 → HTTPS',
+  },
+  {
+    title: 'Connect your alerts',
+    desc: 'Link a Telegram account or email address. PingTower will notify you on status transitions — DOWN and recovery.',
+    code: 'Integrations → <em style="color:#4ade80">Connect via Telegram</em>',
+  },
+  {
+    title: 'Watch the data roll in',
+    desc: 'Latency charts, uptime percentages, response codes — all updated live. Dig into any server for a full breakdown.',
+    code: '<em style="color:#4ade80">99.97%</em> uptime · <em style="color:#4ade80">112 ms</em> avg · <em style="color:#4ade80">P99 334 ms</em>',
+  },
+]

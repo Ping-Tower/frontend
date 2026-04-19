@@ -1,0 +1,27 @@
+services:
+  frontend:
+    image: ${FRONTEND_IMAGE_NAME:-frontend:local}
+    build:
+      context: .
+      args:
+        VITE_API_URL: ${VITE_API_URL:-}
+        VITE_TELEGRAM_BOT_USERNAME: ${VITE_TELEGRAM_BOT_USERNAME:-}
+        VITE_SOCIAL_TELEGRAM_URL: ${VITE_SOCIAL_TELEGRAM_URL:-}
+        VITE_SOCIAL_GITHUB_URL: ${VITE_SOCIAL_GITHUB_URL:-}
+        VITE_SOCIAL_GITLAB_URL: ${VITE_SOCIAL_GITLAB_URL:-}
+        VITE_SOCIAL_LINKEDIN_URL: ${VITE_SOCIAL_LINKEDIN_URL:-}
+    container_name: frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    environment:
+      # URL of the API container as seen from inside the Docker network.
+      # nginx proxies /api/* and /hubs/* here, so VITE_API_URL can stay empty.
+      BACKEND_URL: ${FRONTEND_BACKEND_URL:-http://pingtower-api:8080}
+    networks:
+      - pingtower_network
+
+networks:
+  pingtower_network:
+    name: pingtower_network
+    external: true
