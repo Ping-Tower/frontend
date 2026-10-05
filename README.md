@@ -1,28 +1,12 @@
-<div align="center">
+# PingTower Frontend
 
-<a href="https://gitlab.com/pingtower"><img src="https://gitlab.com/uploads/-/system/group/avatar/121984904/logo-mark-avatar.png" width="72" alt="PingTower"></a>
+Monitoring dashboard: servers, live statuses, latency charts and notification settings.
 
-# 🖥️ frontend
-
-### Monitoring dashboard: servers, live statuses, latency charts and notification settings
-
-[![pipeline](https://gitlab.com/pingtower/frontend/badges/main/pipeline.svg)](https://gitlab.com/pingtower/frontend/-/pipelines)
-![React](https://img.shields.io/badge/React_19-20232A?logo=react&logoColor=61DAFB)
-![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
-![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)
-![Tailwind](https://img.shields.io/badge/Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white)
-![TanStack Query](https://img.shields.io/badge/TanStack_Query-FF4154?logo=reactquery&logoColor=white)
-![nginx](https://img.shields.io/badge/nginx-009639?logo=nginx&logoColor=white)
-
-<sub>Part of <a href="https://gitlab.com/pingtower"><b>PingTower</b></a> — real-time server availability monitoring</sub>
-
-</div>
-
----
+Stack: React 19, TypeScript, Vite, Tailwind CSS, TanStack Query, nginx.
 
 ## Role in the system
 
-The single-page app users interact with. It talks only to the [api](https://gitlab.com/pingtower/api):
+The single-page app users interact with. It talks only to the `api`:
 REST for data and a SignalR connection for live status updates, so a server going down shows up on the
 dashboard without a page refresh. In production it is served by nginx, which also proxies `/api` and
 `/hubs` to the backend.
@@ -55,7 +39,7 @@ flowchart LR
 
 ## Quick start
 
-**Whole stack** — via [infra](https://gitlab.com/pingtower/infra) (all repos cloned side by side):
+**Whole stack** — via `infra` (all repos cloned side by side):
 
 ```bash
 make -C infra up
