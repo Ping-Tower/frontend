@@ -5,6 +5,8 @@ import { useSearchParams } from 'react-router'
 import { AuthLayout } from '@/features/auth/components/AuthLayout'
 import { Input } from '@/shared/ui/input'
 import { Button } from '@/shared/ui/button'
+import { FieldError } from '@/shared/ui/field-error'
+import { FormField } from '@/shared/ui/form-field'
 import { useResetPassword } from '@/features/auth/hooks'
 
 const schema = z.object({
@@ -25,7 +27,6 @@ export function ResetPasswordPage() {
 
   return (
     <AuthLayout>
-      <p className="auth-kicker">Recovery</p>
       <h1 className="auth-title">Choose a new password</h1>
       <p className="auth-description">
         Enter your new password below.
@@ -35,23 +36,15 @@ export function ResetPasswordPage() {
         onSubmit={handleSubmit((d) => mutation.mutate({ email, code, newPassword: d.newPassword }))}
         className="flex flex-col gap-4"
       >
-        <div className="flex flex-col gap-1">
+        <FormField label="New password" error={errors.newPassword?.message} hint="At least 6 characters">
           <Input
             type="password"
-            placeholder="New password"
             {...register('newPassword')}
             aria-invalid={!!errors.newPassword}
           />
-          {errors.newPassword && (
-            <p className="text-status-down text-sm font-alatsi px-1">{errors.newPassword.message}</p>
-          )}
-        </div>
+        </FormField>
 
-        {mutation.error && (
-          <p className="text-status-down text-sm font-alatsi px-1">
-            {(mutation.error as Error).message}
-          </p>
-        )}
+        <FieldError message={mutation.error?.message} />
 
         {mutation.isSuccess && (
           <p className="text-status-up text-sm font-alatsi px-1">

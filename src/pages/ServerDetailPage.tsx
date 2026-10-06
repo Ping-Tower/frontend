@@ -6,7 +6,8 @@ import {
   useServerState,
   useServerUptime,
 } from '@/features/monitoring/hooks'
-import type { ServerStatus } from '@/entities'
+import { formatEndpoint, isHttpProtocol, statusVariant } from '@/entities/status'
+import { formatDateTime, formatLatency } from '@/shared/lib/format'
 import { Badge } from '@/shared/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Skeleton } from '@/shared/ui/skeleton'
@@ -14,12 +15,12 @@ import { TabPanel, Tabs } from '@/shared/ui/tabs'
 import { LatencyChart } from '@/widgets/server-detail/LatencyChart'
 import { MonitoringWindowCard } from '@/widgets/server-detail/MonitoringWindowCard'
 import { StatusCodesChart } from '@/widgets/server-detail/StatusCodesChart'
-import { SummaryCards } from '@/widgets/server-detail/SummaryCards'
+import { SummaryCards, type SummaryCardItem } from '@/widgets/server-detail/SummaryCards'
 import { useMonitoringWindow } from '@/widgets/server-detail/useMonitoringWindow'
 
 type TabKey = 'overview' | 'protocol' | 'logs' | 'settings'
 
-const TABS = [
+const TABS: { key: TabKey; label: string }[] = [
   { key: 'overview', label: 'Overview' },
   { key: 'protocol', label: 'Protocol' },
   { key: 'logs', label: 'Logs' },
@@ -35,16 +36,6 @@ const LogsTab = lazy(() =>
 const SettingsTab = lazy(() =>
   import('@/widgets/server-detail/SettingsTab').then((module) => ({ default: module.SettingsTab }))
 )
-
-function statusVariant(s: ServerStatus): 'up' | 'down' | 'unknown' {
-  if (s === 'UP') return 'up'
-  if (s === 'DOWN') return 'down'
-  return 'unknown'
-}
-
-function formatLatency(ms: number | null | undefined) {
-  return ms === null || ms === undefined ? '—' : `${Math.round(ms)} ms`
-}
 
 function TabShellFallback({ title, description, tall = false }: { title: string; description: string; tall?: boolean }) {
   return (
@@ -66,19 +57,19 @@ function TabShellFallback({ title, description, tall = false }: { title: string;
 }
 
 export function ServerDetailPage() {
-  const { serverId } = useParams<{ serverId: string }>()
+  const serverId = useParams<{ serverId: string }>().serverId!
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<TabKey>('overview')
-  const { data: settings } = useServerSettings(serverId!)
+  const { data: settings } = useServerSettings(serverId)
   const monitoringWindow = useMonitoringWindow(settings?.intervalSec)
 
-  const { data: overview, isLoading } = useServerOverview(serverId!, monitoringWindow.overviewFilters, {
+  const { data: overview, isLoading } = useServerOverview(serverId, monitoringWindow.overviewFilters, {
     refetchInterval: monitoringWindow.metricsRefetchInterval,
   })
-  const { data: baselineStats } = useServerUptime(serverId!, monitoringWindow.baselineFilters, {
+  const { data: baselineStats } = useServerUptime(serverId, monitoringWindow.baselineFilters, {
     refetchInterval: monitoringWindow.metricsRefetchInterval,
   })
-  const { data: state } = useServerState(serverId!, {
+  const { data: state } = useServerState(serverId, {
     refetchInterval: monitoringWindow.refreshOption === '0' ? 30_000 : Number(monitoringWindow.refreshOption) * 1000,
   })
 
@@ -106,9 +97,9 @@ export function ServerDetailPage() {
   const server = overview.target
   const summary = overview.summary
   const liveStatus = state?.status ?? server.status
-  const supportsResponseCodes = server.protocol === 'HTTP' || server.protocol === 'HTTPS'
+  const supportsResponseCodes = isHttpProtocol(server.protocol)
 
-  const statCards = [
+  const statCards: SummaryCardItem[] = [
     {
       label: 'Uptime',
       value: `${summary.uptimePct.toFixed(2)}%`,
@@ -117,30 +108,12 @@ export function ServerDetailPage() {
         : summary.uptimePct >= 95 ? 'text-status-unknown'
         : 'text-status-down',
     },
-    { label: 'Checks', value: summary.totalChecks.toLocaleString(), tone: 'text-stroke' },
-    { label: 'Average', value: formatLatency(summary.avgLatencyMs), tone: 'text-stroke' },
-    { label: 'P50', value: formatLatency(summary.p50LatencyMs), tone: 'text-stroke' },
-    { label: 'P90', value: formatLatency(summary.p90LatencyMs), tone: 'text-stroke' },
-    { label: 'P99', value: formatLatency(summary.p99LatencyMs), tone: 'text-stroke' },
+    { label: 'Checks', value: summary.totalChecks.toLocaleString() },
+    { label: 'Average', value: formatLatency(summary.avgLatencyMs) },
+    { label: 'P50', value: formatLatency(summary.p50LatencyMs) },
+    { label: 'P90', value: formatLatency(summary.p90LatencyMs) },
+    { label: 'P99', value: formatLatency(summary.p99LatencyMs) },
   ]
-
-  const monitoringWindowProps = {
-    windowKey: monitoringWindow.windowKey,
-    rangeMode: monitoringWindow.rangeMode,
-    bucketOption: monitoringWindow.bucketOption,
-    refreshOption: monitoringWindow.refreshOption,
-    customRangeDraft: monitoringWindow.customRangeDraft,
-    activeBucketSec: overview.chart.bucketSizeSec,
-    displayRange: monitoringWindow.displayRange,
-    isCustomRangeValid: monitoringWindow.isCustomRangeValid,
-    onPreset: monitoringWindow.resetToPreset,
-    onRefreshNow: monitoringWindow.refreshNow,
-    onDraftChange: monitoringWindow.setCustomRangeDraft,
-    onApplyRange: monitoringWindow.applyCustomRange,
-    onResetToPreset: () => monitoringWindow.resetToPreset(),
-    onBucketChange: monitoringWindow.setBucketOption,
-    onRefreshChange: monitoringWindow.setRefreshOption,
-  }
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
@@ -158,8 +131,7 @@ export function ServerDetailPage() {
               {server.name}
             </h1>
             <p className="mt-2 max-w-3xl font-alatsi text-[0.82rem] text-muted">
-              {server.protocol}
-              {server.protocol === 'ICMP' ? ` · ${server.host}` : ` · ${server.host}:${server.port}`}
+              {server.protocol} · {formatEndpoint(server)}
               {server.query ? ` · ${server.query}` : ''}
             </p>
           </div>
@@ -167,36 +139,31 @@ export function ServerDetailPage() {
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={statusVariant(liveStatus)}>{liveStatus}</Badge>
             <div className="rounded-[4px] border border-white/7 px-3 py-1.5 font-alatsi text-[0.72rem] text-muted">
-              {new Date(server.updatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              {formatDateTime(server.updatedAt)}
             </div>
           </div>
         </div>
 
-        <Tabs tabs={TABS} active={activeTab} onChange={(k) => setActiveTab(k as TabKey)} className="mt-5 border-b-0" />
+        <Tabs tabs={TABS} active={activeTab} onChange={setActiveTab} className="mt-5 border-b-0" />
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-7">
         <TabPanel value="overview" active={activeTab}>
           <div className="flex flex-col gap-5">
-            <MonitoringWindowCard {...monitoringWindowProps}>
+            <MonitoringWindowCard window={monitoringWindow} activeBucketSec={overview.chart.bucketSizeSec}>
               <CardContent>
                 <SummaryCards items={statCards} />
               </CardContent>
 
               {baselineStats && (
-                <CardContent className="mt-3 grid gap-2 md:grid-cols-2">
-                  <div className="rounded-[6px] border border-white/7 bg-surface-control p-3">
-                    <p className="font-alatsi text-[0.68rem] uppercase tracking-[0.06em] text-muted">24h Baseline Uptime</p>
-                    <p className="mt-1.5 font-alatsi text-[1.2rem] font-bold tracking-[-0.02em] text-stroke">
-                      {baselineStats.uptimePct.toFixed(2)}%
-                    </p>
-                  </div>
-                  <div className="rounded-[6px] border border-white/7 bg-surface-control p-3">
-                    <p className="font-alatsi text-[0.68rem] uppercase tracking-[0.06em] text-muted">24h Baseline P90</p>
-                    <p className="mt-1.5 font-alatsi text-[1.2rem] font-bold tracking-[-0.02em] text-stroke">
-                      {formatLatency(baselineStats.p90LatencyMs)}
-                    </p>
-                  </div>
+                <CardContent className="mt-3">
+                  <SummaryCards
+                    className="md:grid-cols-2 xl:grid-cols-2"
+                    items={[
+                      { label: '24h Baseline Uptime', value: `${baselineStats.uptimePct.toFixed(2)}%` },
+                      { label: '24h Baseline P90', value: formatLatency(baselineStats.p90LatencyMs) },
+                    ]}
+                  />
                 </CardContent>
               )}
             </MonitoringWindowCard>
@@ -245,7 +212,7 @@ export function ServerDetailPage() {
           <Suspense fallback={<TabShellFallback title="Recent Checks" description="Loading raw probe results for the selected range." tall />}>
             <LogsTab
               key={`${monitoringWindow.overviewFilters.from}-${monitoringWindow.overviewFilters.to}`}
-              serverId={serverId!}
+              serverId={serverId}
               from={monitoringWindow.overviewFilters.from}
               to={monitoringWindow.overviewFilters.to}
               refetchInterval={monitoringWindow.metricsRefetchInterval}
@@ -255,7 +222,7 @@ export function ServerDetailPage() {
 
         <TabPanel value="settings" active={activeTab}>
           <Suspense fallback={<TabShellFallback title="Ping Settings" description="Loading target interval and retry controls." />}>
-            <SettingsTab serverId={serverId!} />
+            <SettingsTab serverId={serverId} />
           </Suspense>
         </TabPanel>
       </div>

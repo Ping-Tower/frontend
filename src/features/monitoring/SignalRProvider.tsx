@@ -15,7 +15,8 @@ interface StatusChangedPayload {
 
 export function SignalRProvider({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.token)
-  const { setConnection, setStatus } = useSignalRStore()
+  const setConnection = useSignalRStore((s) => s.setConnection)
+  const setStatus = useSignalRStore((s) => s.setStatus)
   const qc = useQueryClient()
 
   useEffect(() => {
@@ -23,7 +24,7 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
 
     const connection = new signalR.HubConnectionBuilder()
       .withUrl(`${BASE_URL}/hubs/monitoring`, {
-        accessTokenFactory: () => token ?? '',
+        accessTokenFactory: () => token,
       })
       .withAutomaticReconnect()
       .configureLogging(signalR.LogLevel.Warning)
@@ -33,7 +34,7 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
       const { serverId, status } = payload
 
       // Patch all server list caches, including filtered queries.
-      qc.setQueriesData<Server[]>({ queryKey: ['servers'] }, (old) =>
+      qc.setQueriesData<Server[]>({ queryKey: keys.allServers }, (old) =>
         old?.map((s) => (s.id === serverId ? { ...s, status } : s))
       )
       // Patch detail cache used by the server page.
@@ -41,19 +42,11 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
         old ? { ...old, status } : old
       )
       // Patch overview caches so the target header updates immediately.
-      qc.setQueriesData<ServerMonitoringOverview>({ queryKey: ['server-overview', serverId] }, (old) =>
-        old
-          ? {
-              ...old,
-              target: {
-                ...old.target,
-                status,
-              },
-            }
-          : old
+      qc.setQueriesData<ServerMonitoringOverview>({ queryKey: keys.serverOverviewAll(serverId) }, (old) =>
+        old ? { ...old, target: { ...old.target, status } } : old
       )
       // Patch live state immediately and then refetch for canonical state.
-      qc.setQueryData<ServerState>(keys.serverState(serverId), (old) => ({ status: old?.status === status ? old.status : status }))
+      qc.setQueryData<ServerState>(keys.serverState(serverId), { status })
       qc.invalidateQueries({ queryKey: keys.serverState(serverId) })
     })
 

@@ -1,27 +1,17 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useServers, useDeleteServer } from '@/features/monitoring/hooks'
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
-import type { Server, ServerStatus } from '@/entities'
+import { Input } from '@/shared/ui/input'
+import { useDebounce } from '@/shared/hooks/use-debounce'
+import { cn } from '@/shared/lib/cn'
+import { formatEndpoint, statusVariant } from '@/entities/status'
+import type { Server } from '@/entities'
 
-function useDebounce<T>(value: T, delayMs: number): T {
-  const [debounced, setDebounced] = useState(value)
-  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
-  useEffect(() => {
-    timerRef.current = setTimeout(() => setDebounced(value), delayMs)
-    return () => clearTimeout(timerRef.current)
-  }, [value, delayMs])
-  return debounced
-}
-
-function statusVariant(s: ServerStatus): 'up' | 'down' | 'unknown' {
-  if (s === 'UP') return 'up'
-  if (s === 'DOWN') return 'down'
-  return 'unknown'
-}
+const COLUMNS = ['Name', 'Host', 'Protocol', 'Status', 'Actions'] as const
 
 interface ServerTableProps {
   onEdit: (server: Server) => void
@@ -43,7 +33,9 @@ export function ServerTable({ onEdit, onAdd }: ServerTableProps) {
     deleteServer.mutate(deletingId, { onSettled: () => setDeletingId(null) })
   }
 
-  if (!isLoading && servers?.length === 0) {
+  // The global empty state only makes sense without an active search; otherwise
+  // the search box would disappear together with the results.
+  if (!isLoading && servers?.length === 0 && !search && !debouncedSearch) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-16 border border-dashed border-white/12 rounded-[8px]">
         <div className="text-center">
@@ -59,8 +51,8 @@ export function ServerTable({ onEdit, onAdd }: ServerTableProps) {
     <>
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
-          <input
-            className="flex-1 h-8 rounded-[6px] border border-white/7 bg-surface-control px-3 font-alatsi text-sm text-stroke placeholder:text-muted/50 focus:outline-none focus:border-brand/40"
+          <Input
+            className="h-8 flex-1"
             placeholder="Search servers..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -74,11 +66,17 @@ export function ServerTable({ onEdit, onAdd }: ServerTableProps) {
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-surface-panel border-b border-white/12">
-                <th className="text-left px-4 py-2.5 font-alatsi text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-muted">Name</th>
-                <th className="text-left px-4 py-2.5 font-alatsi text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-muted">Host</th>
-                <th className="text-left px-4 py-2.5 font-alatsi text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-muted">Protocol</th>
-                <th className="text-left px-4 py-2.5 font-alatsi text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-muted">Status</th>
-                <th className="text-right px-4 py-2.5 font-alatsi text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-muted">Actions</th>
+                {COLUMNS.map((col) => (
+                  <th
+                    key={col}
+                    className={cn(
+                      'px-4 py-2.5 font-alatsi text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-muted',
+                      col === 'Actions' ? 'text-right' : 'text-left'
+                    )}
+                  >
+                    {col}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -107,7 +105,7 @@ export function ServerTable({ onEdit, onAdd }: ServerTableProps) {
                 >
                   <td className="px-4 py-3 font-alatsi text-sm font-semibold text-stroke">{server.name}</td>
                   <td className="px-4 py-3 font-alatsi text-[0.78rem] text-muted">
-                    {server.protocol === 'ICMP' ? server.host : `${server.host}:${server.port}`}
+                    {formatEndpoint(server)}
                   </td>
                   <td className="px-4 py-3">
                     <Badge>{server.protocol}</Badge>

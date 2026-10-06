@@ -1,13 +1,17 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { toast } from 'sonner'
 import type { NotificationSettings } from '@/entities'
-import { telegramApi, userApi } from '@/features/auth/api'
+import {
+  useMe,
+  useNotificationSettings,
+  useTelegramAccounts,
+  useUpdateNotificationSettings,
+} from '@/features/account/hooks'
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/shared/ui/card'
 import { Input } from '@/shared/ui/input'
+import { PageHeader } from '@/shared/ui/page-header'
 import { Skeleton } from '@/shared/ui/skeleton'
 
 type NotificationSettingsForm = {
@@ -37,29 +41,19 @@ function toForm(settings?: NotificationSettings | null): NotificationSettingsFor
 
 export function NotificationSettingsPage() {
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
-
-  const { data: user, isLoading: isUserLoading } = useQuery({
-    queryKey: ['me'],
-    queryFn: userApi.me,
-  })
-
-  const { data: settings, isLoading: isSettingsLoading } = useQuery({
-    queryKey: ['notification-settings'],
-    queryFn: userApi.notificationSettings,
-  })
-
-  const { data: telegramAccounts, isLoading: isTelegramLoading } = useQuery({
-    queryKey: ['telegram-accounts'],
-    queryFn: telegramApi.list,
-  })
+  const { data: user, isLoading: isUserLoading } = useMe()
+  const { data: settings, isLoading: isSettingsLoading } = useNotificationSettings()
+  const { data: telegramAccounts, isLoading: isTelegramLoading } = useTelegramAccounts()
+  const updateSettings = useUpdateNotificationSettings()
 
   const initialForm = useMemo(() => toForm(settings), [settings])
-  const [form, setForm] = useState<NotificationSettingsForm>(initialForm)
+  // Local edits on top of the server state; null means "nothing changed".
+  const [draft, setDraft] = useState<NotificationSettingsForm | null>(null)
+  const form = draft ?? initialForm
 
-  useEffect(() => {
-    setForm(initialForm)
-  }, [initialForm])
+  function patchForm(patch: Partial<NotificationSettingsForm>) {
+    setDraft({ ...form, ...patch })
+  }
 
   const cooldownValue = Number(form.cooldownSec)
   const isCooldownValid = form.cooldownSec.trim() !== '' && Number.isFinite(cooldownValue) && cooldownValue >= 0
@@ -69,33 +63,27 @@ export function NotificationSettingsPage() {
     form.onLatency !== initialForm.onLatency ||
     form.cooldownSec !== initialForm.cooldownSec
 
-  const updateSettings = useMutation({
-    mutationFn: (next: NotificationSettingsForm) =>
-      userApi.updateNotificationSettings({
-        onDown: next.onDown,
-        onUp: next.onUp,
-        onLatency: next.onLatency,
-        cooldownSec: Number(next.cooldownSec),
-      }),
-    onSuccess: (nextSettings) => {
-      queryClient.setQueryData(['notification-settings'], nextSettings)
-      toast.success('Notification settings saved')
-    },
-    onError: (error) => toast.error((error as Error).message),
-  })
+  function save() {
+    updateSettings.mutate(
+      {
+        onDown: form.onDown,
+        onUp: form.onUp,
+        onLatency: form.onLatency,
+        cooldownSec: Number(form.cooldownSec),
+      },
+      { onSuccess: () => setDraft(null) }
+    )
+  }
 
   const connectedTelegramAccounts = telegramAccounts?.length ?? 0
   const isLoading = isUserLoading || isSettingsLoading
 
   return (
     <div className="flex w-full flex-col gap-5 p-6 sm:p-7">
-      <div>
-        <p className="font-alatsi text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-muted">Profile preferences</p>
-        <h1 className="mt-1.5 font-alatsi text-[1.5rem] font-bold tracking-[-0.03em] text-stroke leading-none">Notifications</h1>
-        <p className="mt-1.5 font-sans text-[0.82rem] leading-relaxed text-muted">
-          Decide which server events can wake you up, and how long the system should wait before repeating the same alert.
-        </p>
-      </div>
+      <PageHeader
+        title="Notifications"
+        description="Decide which server events can wake you up, and how long the system should wait before repeating the same alert."
+      />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,1fr)]">
         <Card className="p-5 sm:p-6">
@@ -119,19 +107,19 @@ export function NotificationSettingsPage() {
                   title="Server down"
                   description="Alert when a target crosses its failure threshold and enters DOWN."
                   enabled={form.onDown}
-                  onToggle={() => setForm((current) => ({ ...current, onDown: !current.onDown }))}
+                  onToggle={() => patchForm({ onDown: !form.onDown })}
                 />
                 <RuleRow
                   title="Server recovered"
                   description="Alert when the target recovers and comes back to UP."
                   enabled={form.onUp}
-                  onToggle={() => setForm((current) => ({ ...current, onUp: !current.onUp }))}
+                  onToggle={() => patchForm({ onUp: !form.onUp })}
                 />
                 <RuleRow
                   title="Latency threshold"
                   description="Alert when latency breaks the target-level threshold you configured on the server."
                   enabled={form.onLatency}
-                  onToggle={() => setForm((current) => ({ ...current, onLatency: !current.onLatency }))}
+                  onToggle={() => patchForm({ onLatency: !form.onLatency })}
                 />
 
                 <div className="rounded-[6px] border border-white/7 bg-surface-control p-4">
@@ -147,9 +135,7 @@ export function NotificationSettingsPage() {
                       type="number"
                       min={0}
                       value={form.cooldownSec}
-                      onChange={(event) =>
-                        setForm((current) => ({ ...current, cooldownSec: event.target.value }))
-                      }
+                      onChange={(event) => patchForm({ cooldownSec: event.target.value })}
                     />
                   </div>
                   {!isCooldownValid && (
@@ -160,7 +146,7 @@ export function NotificationSettingsPage() {
                 <div className="flex flex-wrap items-center gap-3">
                   <Button
                     size="sm"
-                    onClick={() => updateSettings.mutate(form)}
+                    onClick={save}
                     disabled={!isDirty || !isCooldownValid || updateSettings.isPending}
                   >
                     {updateSettings.isPending ? 'Saving...' : 'Save preferences'}
@@ -168,7 +154,7 @@ export function NotificationSettingsPage() {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => setForm(initialForm)}
+                    onClick={() => setDraft(null)}
                     disabled={!isDirty || updateSettings.isPending}
                   >
                     Reset

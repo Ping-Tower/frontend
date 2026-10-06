@@ -1,16 +1,21 @@
 import { useMemo } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { StatusCodeCount } from '@/entities'
+import {
+  BAR_CURSOR,
+  CHART_GRID_STROKE,
+  CHART_PALETTE,
+  CHART_TICK,
+  TOOLTIP_PROPS,
+} from '@/shared/ui/chart-theme'
 
 interface StatusCodesChartProps {
   data: StatusCodeCount[]
 }
 
-const BAR_COLORS = ['#4da8d4', '#5db87a', '#e09a40', '#b87ab0', '#e07060', '#8090a0']
-
 export function StatusCodesChart({ data }: StatusCodesChartProps) {
   const chartData = useMemo(
-    () => data.map((item, index) => ({ ...item, fill: BAR_COLORS[index % BAR_COLORS.length] })),
+    () => data.map((item, index) => ({ ...item, fill: CHART_PALETTE[index % CHART_PALETTE.length] })),
     [data]
   )
 
@@ -26,33 +31,23 @@ export function StatusCodesChart({ data }: StatusCodesChartProps) {
     <div className="h-[280px]">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={chartData} margin={{ top: 8, right: 8, bottom: 8, left: -12 }}>
-          <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
+          <CartesianGrid vertical={false} stroke={CHART_GRID_STROKE} />
           <XAxis
             dataKey="code"
             tickLine={false}
             axisLine={false}
-            tick={{ fontFamily: 'Manrope, sans-serif', fontSize: 12, fill: '#6b7280' }}
+            tick={CHART_TICK}
           />
           <YAxis
             allowDecimals={false}
             tickLine={false}
             axisLine={false}
             width={36}
-            tick={{ fontFamily: 'Manrope, sans-serif', fontSize: 12, fill: '#6b7280' }}
+            tick={CHART_TICK}
           />
           <Tooltip
-            cursor={{ fill: 'rgba(255,255,255,0.04)' }}
-            contentStyle={{
-              background: 'rgba(18,18,26,0.97)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '12px',
-              boxShadow: '0 18px 60px rgba(0,0,0,0.4)',
-              fontFamily: 'Manrope, sans-serif',
-              fontSize: 13,
-              color: '#c8cdd6',
-            }}
-            labelStyle={{ color: '#9ca3af' }}
-            itemStyle={{ color: '#c8cdd6' }}
+            cursor={BAR_CURSOR}
+            {...TOOLTIP_PROPS}
             formatter={(value) => [`${value} responses`]}
           />
           <Bar dataKey="count" radius={[10, 10, 0, 0]} maxBarSize={42}>

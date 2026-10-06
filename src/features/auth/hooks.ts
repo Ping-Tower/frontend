@@ -2,7 +2,10 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/shared/stores/auth.store'
+import { toastError } from '@/shared/lib/toast'
 import { authApi } from './api'
+
+export const PENDING_VERIFY_EMAIL_KEY = 'pendingVerifyEmail'
 
 export function useLogin() {
   const setSession = useAuthStore((s) => s.setSession)
@@ -25,7 +28,7 @@ export function useRegister() {
     mutationFn: ({ email, password, name }: { email: string; password: string; name: string }) =>
       authApi.register(email, password, name),
     onSuccess: (_, vars) => {
-      sessionStorage.setItem('pendingVerifyEmail', vars.email)
+      sessionStorage.setItem(PENDING_VERIFY_EMAIL_KEY, vars.email)
       navigate('/verify-email')
     },
   })
@@ -51,7 +54,7 @@ export function useForgotPassword() {
   return useMutation({
     mutationFn: (email: string) => authApi.forgotPassword(email),
     onSuccess: () => toast.success('Reset link sent — check your inbox'),
-    onError: (e) => toast.error((e as Error).message),
+    onError: toastError,
   })
 }
 
@@ -64,6 +67,6 @@ export function useResetPassword() {
       toast.success('Password reset successfully')
       navigate('/login')
     },
-    onError: (e) => toast.error((e as Error).message),
+    onError: toastError,
   })
 }

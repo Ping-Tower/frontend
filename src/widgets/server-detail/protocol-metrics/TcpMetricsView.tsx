@@ -11,13 +11,15 @@ import {
   YAxis,
 } from 'recharts'
 import {
-  type ProtocolMetricsViewProps,
+  CHART_COLORS,
+  CHART_GRID_STROKE,
   CHART_TICK,
-  TOOLTIP_STYLE,
-  formatBucketDateTime,
-  formatBucketTime,
-  formatLatency,
-} from './helpers'
+  LEGEND_PROPS,
+  LINE_CURSOR,
+  TOOLTIP_PROPS,
+} from '@/shared/ui/chart-theme'
+import { formatDateTime, formatLatency, formatTime } from '@/shared/lib/format'
+import { type ProtocolMetricsViewProps } from './helpers'
 import { EmptyChart, MetricTile } from './shared'
 
 export function TcpMetricsView({ summary, chart }: ProtocolMetricsViewProps) {
@@ -60,27 +62,25 @@ export function TcpMetricsView({ summary, chart }: ProtocolMetricsViewProps) {
               <ComposedChart data={tcpData} margin={{ top: 8, right: 10, bottom: 8, left: -8 }}>
                 <defs>
                   <linearGradient id="tcpLatencyArea" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#4da8d4" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="#4da8d4" stopOpacity={0.03} />
+                    <stop offset="0%" stopColor={CHART_COLORS.blue} stopOpacity={0.3} />
+                    <stop offset="100%" stopColor={CHART_COLORS.blue} stopOpacity={0.03} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                 <XAxis
                   type="number"
                   dataKey="bucketTs"
                   domain={['dataMin', 'dataMax']}
-                  tickFormatter={formatBucketTime}
+                  tickFormatter={(value) => formatTime(value)}
                   tickLine={false}
                   axisLine={false}
                   tick={CHART_TICK}
                 />
                 <YAxis tickLine={false} axisLine={false} tick={CHART_TICK} unit="ms" width={56} />
                 <Tooltip
-                  cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
-                  contentStyle={TOOLTIP_STYLE}
-                  labelStyle={{ color: '#9ca3af' }}
-                  itemStyle={{ color: '#c8cdd6' }}
-                  labelFormatter={(value) => formatBucketDateTime(Number(value))}
+                  cursor={LINE_CURSOR}
+                  {...TOOLTIP_PROPS}
+                  labelFormatter={(value) => formatDateTime(Number(value))}
                   formatter={(value, _name, item) => {
                     const labels: Record<string, string> = {
                       avgLatencyMs: 'Avg connect',
@@ -89,18 +89,13 @@ export function TcpMetricsView({ summary, chart }: ProtocolMetricsViewProps) {
                     return [formatLatency(Number(value)), labels[item.dataKey as string] ?? 'Metric']
                   }}
                 />
-                <Legend
-                  verticalAlign="top"
-                  align="left"
-                  iconType="plainline"
-                  wrapperStyle={{ paddingBottom: '14px', fontFamily: 'Manrope, sans-serif', fontSize: '12px', color: '#9ca3af' }}
-                />
+                <Legend {...LEGEND_PROPS} />
                 <Area
                   type="monotone"
                   dataKey="avgLatencyMs"
                   name="Avg connect"
                   fill="url(#tcpLatencyArea)"
-                  stroke="#4da8d4"
+                  stroke={CHART_COLORS.blue}
                   strokeWidth={2}
                   connectNulls
                 />
@@ -108,7 +103,7 @@ export function TcpMetricsView({ summary, chart }: ProtocolMetricsViewProps) {
                   type="monotone"
                   dataKey="avgDnsLookupMs"
                   name="Avg DNS lookup"
-                  stroke="#5db87a"
+                  stroke={CHART_COLORS.green}
                   strokeWidth={2.5}
                   dot={false}
                   connectNulls

@@ -13,19 +13,19 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import type { Protocol } from '@/entities'
 import {
-  type ProtocolMetricsViewProps,
+  BAR_CURSOR,
+  CHART_COLORS,
+  CHART_GRID_STROKE,
+  CHART_PALETTE,
   CHART_TICK,
-  TLS_COLORS,
-  TOOLTIP_STYLE,
-  formatBucketDateTime,
-  formatBucketTime,
-  formatBytes,
-  formatDate,
-  formatExpiryHint,
-  formatLatency,
-} from './helpers'
+  LEGEND_PROPS,
+  LINE_CURSOR,
+  TOOLTIP_PROPS,
+} from '@/shared/ui/chart-theme'
+import type { Protocol } from '@/entities'
+import { formatBytes, formatDate, formatDateTime, formatLatency, formatTime } from '@/shared/lib/format'
+import { type ProtocolMetricsViewProps, formatExpiryHint } from './helpers'
 import { EmptyChart, MetricTile } from './shared'
 
 interface HttpMetricsViewProps extends ProtocolMetricsViewProps {
@@ -116,27 +116,25 @@ export function HttpMetricsView({ summary, chart, protocol }: HttpMetricsViewPro
                 <ComposedChart data={dnsData} margin={{ top: 8, right: 10, bottom: 8, left: -8 }}>
                   <defs>
                     <linearGradient id="httpDnsArea" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#4da8d4" stopOpacity={0.3} />
-                      <stop offset="100%" stopColor="#4da8d4" stopOpacity={0.03} />
+                      <stop offset="0%" stopColor={CHART_COLORS.blue} stopOpacity={0.3} />
+                      <stop offset="100%" stopColor={CHART_COLORS.blue} stopOpacity={0.03} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                   <XAxis
                     type="number"
                     dataKey="bucketTs"
                     domain={['dataMin', 'dataMax']}
-                    tickFormatter={formatBucketTime}
+                    tickFormatter={(value) => formatTime(value)}
                     tickLine={false}
                     axisLine={false}
                     tick={CHART_TICK}
                   />
                   <YAxis tickLine={false} axisLine={false} tick={CHART_TICK} unit="ms" width={56} />
                   <Tooltip
-                    cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
-                    contentStyle={TOOLTIP_STYLE}
-                    labelStyle={{ color: '#9ca3af' }}
-                    itemStyle={{ color: '#c8cdd6' }}
-                    labelFormatter={(value) => formatBucketDateTime(Number(value))}
+                    cursor={LINE_CURSOR}
+                    {...TOOLTIP_PROPS}
+                    labelFormatter={(value) => formatDateTime(Number(value))}
                     formatter={(value, _name, item) => {
                       const labels: Record<string, string> = {
                         avgDnsLookupMs: 'Avg DNS lookup',
@@ -145,18 +143,13 @@ export function HttpMetricsView({ summary, chart, protocol }: HttpMetricsViewPro
                       return [formatLatency(Number(value)), labels[item.dataKey as string] ?? 'Metric']
                     }}
                   />
-                  <Legend
-                    verticalAlign="top"
-                    align="left"
-                    iconType="plainline"
-                    wrapperStyle={{ paddingBottom: '14px', fontFamily: 'Manrope, sans-serif', fontSize: '12px', color: '#9ca3af' }}
-                  />
+                  <Legend {...LEGEND_PROPS} />
                   <Area
                     type="monotone"
                     dataKey="avgLatencyMs"
                     name="Avg latency"
                     fill="url(#httpDnsArea)"
-                    stroke="#6b7280"
+                    stroke={CHART_COLORS.gray}
                     strokeWidth={2}
                     connectNulls
                   />
@@ -164,7 +157,7 @@ export function HttpMetricsView({ summary, chart, protocol }: HttpMetricsViewPro
                     type="monotone"
                     dataKey="avgDnsLookupMs"
                     name="Avg DNS lookup"
-                    stroke="#4da8d4"
+                    stroke={CHART_COLORS.blue}
                     strokeWidth={3}
                     dot={false}
                     connectNulls
@@ -187,7 +180,7 @@ export function HttpMetricsView({ summary, chart, protocol }: HttpMetricsViewPro
               <div className="h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={summary.tlsVersions} layout="vertical" margin={{ top: 8, right: 8, bottom: 8, left: 12 }}>
-                    <CartesianGrid horizontal={false} stroke="rgba(255,255,255,0.06)" />
+                    <CartesianGrid horizontal={false} stroke={CHART_GRID_STROKE} />
                     <XAxis type="number" tickLine={false} axisLine={false} tick={CHART_TICK} />
                     <YAxis
                       type="category"
@@ -198,10 +191,8 @@ export function HttpMetricsView({ summary, chart, protocol }: HttpMetricsViewPro
                       tick={CHART_TICK}
                     />
                     <Tooltip
-                      cursor={{ fill: 'rgba(255,255,255,0.04)' }}
-                      contentStyle={TOOLTIP_STYLE}
-                      labelStyle={{ color: '#9ca3af' }}
-                      itemStyle={{ color: '#c8cdd6' }}
+                      cursor={BAR_CURSOR}
+                      {...TOOLTIP_PROPS}
                       formatter={(value, _name, item) => {
                         const payload = item.payload as { sharePct: number }
                         return [`${value} handshakes`, `${payload.sharePct.toFixed(1)}% share`]
@@ -209,7 +200,7 @@ export function HttpMetricsView({ summary, chart, protocol }: HttpMetricsViewPro
                     />
                     <Bar dataKey="count" radius={[0, 12, 12, 0]} maxBarSize={28}>
                       {summary.tlsVersions.map((entry, index) => (
-                        <Cell key={entry.version} fill={TLS_COLORS[index % TLS_COLORS.length]} />
+                        <Cell key={entry.version} fill={CHART_PALETTE[index % CHART_PALETTE.length]} />
                       ))}
                     </Bar>
                   </BarChart>

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import type { TelegramAuthData } from '../api'
+import type { TelegramAuthData } from './api'
 
 const BOT_USERNAME = import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined
 
@@ -11,7 +11,8 @@ export function TelegramLoginButton({ onAuth }: TelegramLoginButtonProps) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (!BOT_USERNAME || !containerRef.current) return
+    const container = containerRef.current
+    if (!BOT_USERNAME || !container) return
 
     // Telegram widget calls a global callback
     const callbackName = '__tgAuthCallback__'
@@ -27,11 +28,11 @@ export function TelegramLoginButton({ onAuth }: TelegramLoginButtonProps) {
     script.setAttribute('data-request-access', 'write')
     script.async = true
 
-    containerRef.current.appendChild(script)
+    container.appendChild(script)
 
     return () => {
       delete (window as unknown as Record<string, unknown>)[callbackName]
-      containerRef.current?.querySelector('script')?.remove()
+      script.remove()
     }
   }, [onAuth])
 

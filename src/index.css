@@ -107,14 +107,6 @@ a { color: inherit; }
   background: transparent;
 }
 
-.auth-kicker {
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  font-size: 0.68rem;
-  font-weight: 600;
-  color: var(--color-muted);
-}
-
 .auth-title {
   font-family: var(--font-alatsi);
   font-size: clamp(1.5rem, 1.2rem + 1vw, 1.8rem);
@@ -123,6 +115,11 @@ a { color: inherit; }
   color: var(--color-stroke);
   margin: 0.5rem 0 0.5rem;
   font-weight: 700;
+}
+
+/* Pages without a description keep the same gap between title and form. */
+.auth-title + form {
+  margin-top: 1rem;
 }
 
 .auth-description {

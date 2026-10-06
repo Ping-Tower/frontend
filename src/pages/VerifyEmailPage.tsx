@@ -2,10 +2,13 @@ import { useEffect, useRef } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
+import { PENDING_VERIFY_EMAIL_KEY } from '@/features/auth/hooks'
 import { AuthLayout } from '@/features/auth/components/AuthLayout'
 import { authApi } from '@/features/auth/api'
 import { useAuthStore } from '@/shared/stores/auth.store'
 import { Button } from '@/shared/ui/button'
+import { FieldError } from '@/shared/ui/field-error'
+import { toastError } from '@/shared/lib/toast'
 
 export function VerifyEmailPage() {
   const navigate = useNavigate()
@@ -14,21 +17,15 @@ export function VerifyEmailPage() {
 
   const emailFromUrl = searchParams.get('email') ?? ''
   const codeFromUrl = searchParams.get('code') ?? ''
-  const emailFromStorage = sessionStorage.getItem('pendingVerifyEmail') ?? ''
+  const emailFromStorage = sessionStorage.getItem(PENDING_VERIFY_EMAIL_KEY) ?? ''
   const email = emailFromUrl || emailFromStorage
   const autoVerifyTriggered = useRef(false)
 
   const verifyMutation = useMutation({
     mutationFn: (code: string) => authApi.verifyEmail(email, code),
     onSuccess: (data) => {
-      sessionStorage.removeItem('pendingVerifyEmail')
-      setSession({
-        token: data.token,
-        refreshToken: data.refreshToken,
-        expiration: data.expiration,
-        userId: data.userId,
-        userName: data.userName,
-      })
+      sessionStorage.removeItem(PENDING_VERIFY_EMAIL_KEY)
+      setSession(data)
       navigate('/app/servers', { replace: true })
     },
   })
@@ -36,20 +33,20 @@ export function VerifyEmailPage() {
   const resendMutation = useMutation({
     mutationFn: () => authApi.resendVerification(email),
     onSuccess: () => toast.success(`Verification link sent to ${email}`),
-    onError: (error) => toast.error((error as Error).message),
+    onError: toastError,
   })
 
+  const verify = verifyMutation.mutate
   useEffect(() => {
     if (!autoVerifyTriggered.current && emailFromUrl && codeFromUrl) {
       autoVerifyTriggered.current = true
-      verifyMutation.mutate(codeFromUrl)
+      verify(codeFromUrl)
     }
-  }, [codeFromUrl, emailFromUrl, verifyMutation])
+  }, [codeFromUrl, emailFromUrl, verify])
 
   if (!email) {
     return (
       <AuthLayout>
-        <p className="auth-kicker">Verification</p>
         <h1 className="auth-title">Verify email</h1>
         <p className="auth-description">
           No registration in progress.{' '}
@@ -64,14 +61,11 @@ export function VerifyEmailPage() {
   if (emailFromUrl && codeFromUrl) {
     return (
       <AuthLayout>
-        <p className="auth-kicker">Verification</p>
         <h1 className="auth-title">Confirming your email…</h1>
         <p className="auth-description">Verifying <strong>{email}</strong>.</p>
         {verifyMutation.error && (
           <div className="flex flex-col gap-4">
-            <p className="text-status-down text-sm font-alatsi px-1">
-              {(verifyMutation.error as Error).message}
-            </p>
+            <FieldError message={verifyMutation.error.message} />
             <Button
               type="button"
               size="sm"
@@ -89,7 +83,6 @@ export function VerifyEmailPage() {
 
   return (
     <AuthLayout>
-      <p className="auth-kicker">Verification</p>
       <h1 className="auth-title">Check your inbox</h1>
       <p className="auth-description">
         We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account.

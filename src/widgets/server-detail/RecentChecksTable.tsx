@@ -1,39 +1,6 @@
 import type { PingRecord } from '@/entities'
 import { Badge } from '@/shared/ui/badge'
-
-function formatLatency(value: number | null) {
-  return value === null ? '—' : `${Math.round(value)} ms`
-}
-
-function formatPercent(value: number | null) {
-  return value === null ? '—' : `${value.toFixed(1)}%`
-}
-
-function formatBytes(value: number | null) {
-  if (value === null) return '—'
-
-  const units = ['B', 'KB', 'MB', 'GB']
-  let current = value
-  let unitIndex = 0
-
-  while (current >= 1024 && unitIndex < units.length - 1) {
-    current /= 1024
-    unitIndex++
-  }
-
-  const digits = current >= 100 || unitIndex === 0 ? 0 : 1
-  return `${current.toFixed(digits)} ${units[unitIndex]}`
-}
-
-function formatTimestamp(value: string) {
-  return new Date(value).toLocaleString([], {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  })
-}
+import { EMPTY, formatBytes, formatDate, formatDateTime, formatLatency, formatPercent } from '@/shared/lib/format'
 
 function formatDetails(record: PingRecord) {
   if (record.errorMessage) {
@@ -51,31 +18,21 @@ function formatDetails(record: PingRecord) {
   return 'Successful check'
 }
 
-function formatCertDate(value: string | null) {
-  if (!value) return null
-
-  return new Date(value).toLocaleDateString([], {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
-}
-
 function buildFacts(record: PingRecord) {
   switch (record.protocol) {
     case 'HTTP':
     case 'HTTPS':
       return [
         { label: 'DNS', value: formatLatency(record.dnsLookupMs) },
-        { label: 'TLS', value: record.tlsVersion ?? '—' },
-        { label: 'Cert', value: formatCertDate(record.certExpiresAt) ?? '—' },
+        { label: 'TLS', value: record.tlsVersion ?? EMPTY },
+        { label: 'Cert', value: formatDate(record.certExpiresAt) },
       ]
     case 'ICMP':
       return [
         { label: 'Loss', value: formatPercent(record.packetLossPercent) },
         { label: 'RTT Min', value: formatLatency(record.rttMinMs) },
         { label: 'RTT Max', value: formatLatency(record.rttMaxMs) },
-        { label: 'TTL', value: record.ttl === null ? '—' : String(record.ttl) },
+        { label: 'TTL', value: record.ttl === null ? EMPTY : String(record.ttl) },
       ]
     case 'TCP':
       return [
@@ -129,7 +86,7 @@ export function RecentChecksTable({ records }: { records: PingRecord[] }) {
             <div className="grid gap-3 lg:grid-cols-[170px_96px_180px_minmax(0,1fr)] lg:items-start">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Timestamp</p>
-                <p className="mt-2 text-sm font-semibold text-stroke">{formatTimestamp(record.timestamp)}</p>
+                <p className="mt-2 text-sm font-semibold text-stroke">{formatDateTime(record.timestamp, true)}</p>
               </div>
 
               <div>

@@ -6,6 +6,8 @@ import { AuthLayout } from '@/features/auth/components/AuthLayout'
 import { useForgotPassword } from '@/features/auth/hooks'
 import { Input } from '@/shared/ui/input'
 import { Button } from '@/shared/ui/button'
+import { FieldError } from '@/shared/ui/field-error'
+import { FormField } from '@/shared/ui/form-field'
 
 const schema = z.object({ email: z.email('Enter a valid email') })
 type FormData = z.infer<typeof schema>
@@ -18,7 +20,6 @@ export function ForgotPasswordPage() {
 
   return (
     <AuthLayout>
-      <p className="auth-kicker">Recovery</p>
       <h1 className="auth-title">Reset password</h1>
       <p className="auth-description">
         Enter your email to receive a reset link.
@@ -30,18 +31,11 @@ export function ForgotPasswordPage() {
         </div>
       ) : (
         <form onSubmit={handleSubmit((d) => mutation.mutate(d.email))} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            <Input type="email" placeholder="Email address" {...register('email')} aria-invalid={!!errors.email} />
-            {errors.email && (
-              <p className="text-status-down text-sm font-alatsi px-1">{errors.email.message}</p>
-            )}
-          </div>
+          <FormField label="Email" error={errors.email?.message}>
+            <Input type="email" placeholder="you@example.com" {...register('email')} aria-invalid={!!errors.email} />
+          </FormField>
 
-          {mutation.error && (
-            <p className="text-status-down text-sm font-alatsi px-1">
-              {(mutation.error as Error).message}
-            </p>
-          )}
+          <FieldError message={mutation.error?.message} />
 
           <Button type="submit" size="sm" disabled={mutation.isPending}>
             {mutation.isPending ? 'Sending...' : 'Send reset link'}

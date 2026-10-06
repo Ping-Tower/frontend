@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { toastError } from '@/shared/lib/toast'
 import { serverApi } from './api'
 import type {
   MonitoringQueryOptions,
@@ -9,7 +10,9 @@ import type {
 } from './types'
 
 export const keys = {
+  allServers: ['servers'] as const,
   servers: (search?: string) => ['servers', search ?? ''] as const,
+  serverOverviewAll: (id: string) => ['server-overview', id] as const,
   server: (id: string) => ['server', id] as const,
   serverOverview: (id: string, filters?: ServerOverviewFilters) =>
     ['server-overview', id, filters?.from ?? null, filters?.to ?? null, filters?.bucketSec ?? null] as const,
@@ -93,10 +96,10 @@ export function useCreateServer() {
   return useMutation({
     mutationFn: serverApi.create,
     onSuccess: (server) => {
-      qc.invalidateQueries({ queryKey: ['servers'] })
+      qc.invalidateQueries({ queryKey: keys.allServers })
       toast.success(`Server "${server.name}" added`)
     },
-    onError: (e) => toast.error((e as Error).message),
+    onError: toastError,
   })
 }
 
@@ -105,11 +108,11 @@ export function useUpdateServer(id: string) {
   return useMutation({
     mutationFn: (body: Parameters<typeof serverApi.update>[1]) => serverApi.update(id, body),
     onSuccess: (server) => {
-      qc.invalidateQueries({ queryKey: ['servers'] })
+      qc.invalidateQueries({ queryKey: keys.allServers })
       qc.invalidateQueries({ queryKey: keys.server(id) })
       toast.success(`Server "${server.name}" updated`)
     },
-    onError: (e) => toast.error((e as Error).message),
+    onError: toastError,
   })
 }
 
@@ -118,10 +121,10 @@ export function useDeleteServer() {
   return useMutation({
     mutationFn: serverApi.delete,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['servers'] })
+      qc.invalidateQueries({ queryKey: keys.allServers })
       toast.success('Server deleted')
     },
-    onError: (e) => toast.error((e as Error).message),
+    onError: toastError,
   })
 }
 
@@ -133,6 +136,6 @@ export function useUpdateServerSettings(id: string) {
       qc.invalidateQueries({ queryKey: keys.serverSettings(id) })
       toast.success('Settings saved')
     },
-    onError: (e) => toast.error((e as Error).message),
+    onError: toastError,
   })
 }

@@ -1,8 +1,7 @@
 import { useServers } from '@/features/monitoring/hooks'
 import { Skeleton } from '@/shared/ui/skeleton'
+import { PROTOCOLS } from '@/entities/status'
 import type { Protocol, ServerStatus } from '@/entities'
-
-const PROTOCOLS: Protocol[] = ['HTTP', 'HTTPS', 'TCP', 'ICMP']
 
 export function StatusKpiCards() {
   const { data: servers, isLoading } = useServers()

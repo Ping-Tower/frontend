@@ -6,10 +6,11 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { useCreateServer, useUpdateServer } from '@/features/monitoring/hooks'
 import { Input } from '@/shared/ui/input'
 import { Button } from '@/shared/ui/button'
+import { NativeSelect } from '@/shared/ui/native-select'
+import { FormField } from '@/shared/ui/form-field'
 import { cn } from '@/shared/lib/cn'
-import type { Server } from '@/entities'
-
-const PROTOCOLS = ['HTTP', 'HTTPS', 'TCP', 'ICMP'] as const
+import { PROTOCOLS } from '@/entities/status'
+import type { Protocol, Server } from '@/entities'
 
 const schema = z.object({
   name: z.string().min(1, 'Required'),
@@ -20,7 +21,7 @@ const schema = z.object({
 })
 type FormData = z.infer<typeof schema>
 
-const PROTOCOL_DEFAULTS: Record<typeof PROTOCOLS[number], number> = {
+const PROTOCOL_DEFAULTS: Record<Protocol, number> = {
   HTTP: 80,
   HTTPS: 443,
   TCP: 22,
@@ -60,7 +61,7 @@ export function ServerDialog({ open, onClose, editing }: ServerDialogProps) {
   }, [editing, reset])
 
   function onProtocolChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const next = e.target.value as typeof PROTOCOLS[number]
+    const next = e.target.value as Protocol
     setValue('protocol', next)
     if (!editing) setValue('port', PROTOCOL_DEFAULTS[next])
     if (next === 'ICMP') setValue('query', '')
@@ -78,6 +79,7 @@ export function ServerDialog({ open, onClose, editing }: ServerDialogProps) {
   }
 
   const isPending = create.isPending || update.isPending
+  const mutationError = create.error ?? update.error
 
   return (
     <Dialog.Root open={open} onOpenChange={(v) => !v && onClose()}>
@@ -89,45 +91,39 @@ export function ServerDialog({ open, onClose, editing }: ServerDialogProps) {
           </Dialog.Title>
 
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3.5">
-            <Field label="Name" error={errors.name?.message}>
+            <FormField label="Name" error={errors.name?.message}>
               <Input placeholder="Production API" {...register('name')} />
-            </Field>
+            </FormField>
 
-            <Field label={isIcmp ? 'IP Address' : 'Host'} error={errors.host?.message}>
+            <FormField label={isIcmp ? 'IP Address' : 'Host'} error={errors.host?.message}>
               <Input
                 placeholder={isIcmp ? '192.168.1.1' : 'api.example.com'}
                 {...register('host')}
               />
-            </Field>
+            </FormField>
 
             <div className={cn('grid gap-3', isIcmp ? 'grid-cols-1' : 'grid-cols-2')}>
               {!isIcmp && (
-                <Field label="Port" error={errors.port?.message}>
+                <FormField label="Port" error={errors.port?.message}>
                   <Input type="number" {...register('port', { valueAsNumber: true })} />
-                </Field>
+                </FormField>
               )}
 
-              <Field label="Protocol" error={errors.protocol?.message}>
-                <select
-                  {...register('protocol')}
-                  onChange={onProtocolChange}
-                  className="flex h-9 w-full rounded-[6px] border border-white/7 bg-surface-control px-3 font-alatsi text-sm text-stroke focus:outline-none focus:border-brand/40"
-                >
+              <FormField label="Protocol" error={errors.protocol?.message}>
+                <NativeSelect {...register('protocol')} onChange={onProtocolChange} className="w-full bg-surface-control">
                   {PROTOCOLS.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
-              </Field>
+                </NativeSelect>
+              </FormField>
             </div>
 
             {!isIcmp && (
-              <Field label="Query path (optional)" error={errors.query?.message}>
+              <FormField label="Query path (optional)" error={errors.query?.message}>
                 <Input placeholder="/health" {...register('query')} />
-              </Field>
+              </FormField>
             )}
 
-            {(create.error || update.error) && (
-              <p className="font-sans text-sm text-status-down">
-                {((create.error || update.error) as Error).message}
-              </p>
+            {mutationError && (
+              <p className="font-sans text-sm text-status-down">{mutationError.message}</p>
             )}
 
             <div className="flex justify-end gap-2 mt-1">
@@ -142,17 +138,5 @@ export function ServerDialog({ open, onClose, editing }: ServerDialogProps) {
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
-  )
-}
-
-function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label className={cn('font-alatsi text-[0.68rem] font-semibold uppercase tracking-[0.08em]', error ? 'text-status-down' : 'text-muted')}>
-        {label}
-      </label>
-      {children}
-      {error && <p className="font-sans text-xs text-status-down">{error}</p>}
-    </div>
   )
 }

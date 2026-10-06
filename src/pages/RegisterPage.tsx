@@ -6,6 +6,8 @@ import { AuthLayout } from '@/features/auth/components/AuthLayout'
 import { useRegister } from '@/features/auth/hooks'
 import { Input } from '@/shared/ui/input'
 import { Button } from '@/shared/ui/button'
+import { FieldError } from '@/shared/ui/field-error'
+import { FormField } from '@/shared/ui/form-field'
 
 const schema = z.object({
   name: z.string().min(2, 'Username must be at least 2 characters'),
@@ -16,7 +18,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 export function RegisterPage() {
-  const register_ = useRegister()
+  const registerMutation = useRegister()
   const {
     register,
     handleSubmit,
@@ -25,49 +27,30 @@ export function RegisterPage() {
 
   return (
     <AuthLayout>
-      <p className="auth-kicker">New workspace</p>
       <h1 className="auth-title">Create your monitoring space</h1>
-      <p className="auth-description">
-        Set up your account and start tracking endpoints, latency, and notification flows
-        from a single dashboard.
-      </p>
 
-      <form onSubmit={handleSubmit((d) => register_.mutate(d))} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <Input type="email" placeholder="Email address" {...register('email')} aria-invalid={!!errors.email} />
-          {errors.email && (
-            <p className="font-sans text-xs text-status-down px-1">{errors.email.message}</p>
-          )}
-        </div>
+      <form onSubmit={handleSubmit((d) => registerMutation.mutate(d))} className="flex flex-col gap-4">
+        <FormField label="Email" error={errors.email?.message}>
+          <Input type="email" placeholder="you@example.com" {...register('email')} aria-invalid={!!errors.email} />
+        </FormField>
 
-        <div className="flex flex-col gap-1">
+        <FormField label="Username" error={errors.name?.message}>
           <Input placeholder="Team or user name" {...register('name')} aria-invalid={!!errors.name} />
-          {errors.name && (
-            <p className="font-sans text-xs text-status-down px-1">{errors.name.message}</p>
-          )}
-        </div>
+        </FormField>
 
-        <div className="flex flex-col gap-1">
+        <FormField label="Password" error={errors.password?.message} hint="At least 6 characters">
           <Input
             type="password"
-            placeholder="Create a password"
             {...register('password')}
             aria-invalid={!!errors.password}
           />
-          {errors.password && (
-            <p className="font-sans text-xs text-status-down px-1">{errors.password.message}</p>
-          )}
-        </div>
+        </FormField>
 
-        {register_.error && (
-          <p className="font-sans text-xs text-status-down px-1">
-            {(register_.error as Error).message}
-          </p>
-        )}
+        <FieldError message={registerMutation.error?.message} />
 
         <div className="mt-2 flex flex-col gap-3">
-          <Button type="submit" size="sm" disabled={register_.isPending}>
-            {register_.isPending ? 'Creating account...' : 'Register'}
+          <Button type="submit" size="sm" disabled={registerMutation.isPending}>
+            {registerMutation.isPending ? 'Creating account...' : 'Register'}
           </Button>
 
           <Button type="button" size="sm" variant="outline" asChild>

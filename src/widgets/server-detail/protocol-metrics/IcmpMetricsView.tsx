@@ -11,14 +11,15 @@ import {
   YAxis,
 } from 'recharts'
 import {
-  type ProtocolMetricsViewProps,
+  CHART_COLORS,
+  CHART_GRID_STROKE,
   CHART_TICK,
-  TOOLTIP_STYLE,
-  formatBucketDateTime,
-  formatBucketTime,
-  formatLatency,
-  formatPercent,
-} from './helpers'
+  LEGEND_PROPS,
+  LINE_CURSOR,
+  TOOLTIP_PROPS,
+} from '@/shared/ui/chart-theme'
+import { formatDateTime, formatLatency, formatPercent, formatTime } from '@/shared/lib/format'
+import { type ProtocolMetricsViewProps } from './helpers'
 import { EmptyChart, MetricTile } from './shared'
 
 export function IcmpMetricsView({ summary, chart }: ProtocolMetricsViewProps) {
@@ -76,16 +77,16 @@ export function IcmpMetricsView({ summary, chart }: ProtocolMetricsViewProps) {
               <ComposedChart data={icmpData} margin={{ top: 8, right: 12, bottom: 8, left: 0 }}>
                 <defs>
                   <linearGradient id="icmpLossArea" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#e07060" stopOpacity={0.28} />
-                    <stop offset="100%" stopColor="#e07060" stopOpacity={0.03} />
+                    <stop offset="0%" stopColor={CHART_COLORS.red} stopOpacity={0.28} />
+                    <stop offset="100%" stopColor={CHART_COLORS.red} stopOpacity={0.03} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                 <XAxis
                   type="number"
                   dataKey="bucketTs"
                   domain={['dataMin', 'dataMax']}
-                  tickFormatter={formatBucketTime}
+                  tickFormatter={(value) => formatTime(value)}
                   tickLine={false}
                   axisLine={false}
                   tick={CHART_TICK}
@@ -108,9 +109,9 @@ export function IcmpMetricsView({ summary, chart }: ProtocolMetricsViewProps) {
                   width={52}
                 />
                 <Tooltip
-                  cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
-                  contentStyle={TOOLTIP_STYLE}
-                  labelFormatter={(value) => formatBucketDateTime(Number(value))}
+                  cursor={LINE_CURSOR}
+                  {...TOOLTIP_PROPS}
+                  labelFormatter={(value) => formatDateTime(Number(value))}
                   formatter={(value, _name, item) => {
                     const labelMap: Record<string, string> = {
                       avgPacketLossPercent: 'Avg packet loss',
@@ -125,19 +126,14 @@ export function IcmpMetricsView({ summary, chart }: ProtocolMetricsViewProps) {
                     return [formatLatency(Number(value)), labelMap[item.dataKey as string] ?? 'Metric']
                   }}
                 />
-                <Legend
-                  verticalAlign="top"
-                  align="left"
-                  iconType="plainline"
-                  wrapperStyle={{ paddingBottom: '14px', fontFamily: 'Manrope, sans-serif', fontSize: '12px', color: '#9ca3af' }}
-                />
+                <Legend {...LEGEND_PROPS} />
                 <Area
                   yAxisId="loss"
                   type="monotone"
                   dataKey="avgPacketLossPercent"
                   name="Avg packet loss"
                   fill="url(#icmpLossArea)"
-                  stroke="#e07060"
+                  stroke={CHART_COLORS.red}
                   strokeWidth={2}
                   connectNulls
                 />
@@ -146,7 +142,7 @@ export function IcmpMetricsView({ summary, chart }: ProtocolMetricsViewProps) {
                   type="monotone"
                   dataKey="avgRttMinMs"
                   name="Avg RTT min"
-                  stroke="#4da8d4"
+                  stroke={CHART_COLORS.blue}
                   strokeWidth={2.5}
                   dot={false}
                   connectNulls
@@ -156,7 +152,7 @@ export function IcmpMetricsView({ summary, chart }: ProtocolMetricsViewProps) {
                   type="monotone"
                   dataKey="avgRttMaxMs"
                   name="Avg RTT max"
-                  stroke="#5db87a"
+                  stroke={CHART_COLORS.green}
                   strokeWidth={2.5}
                   dot={false}
                   connectNulls

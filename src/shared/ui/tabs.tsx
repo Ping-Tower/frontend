@@ -1,19 +1,19 @@
 import React from 'react'
 import { cn } from '@/shared/lib/cn'
 
-interface Tab {
-  key: string
+interface Tab<K extends string> {
+  key: K
   label: string
 }
 
-interface TabsProps {
-  tabs: Tab[]
-  active: string
-  onChange: (key: string) => void
+interface TabsProps<K extends string> {
+  tabs: Tab<K>[]
+  active: K
+  onChange: (key: K) => void
   className?: string
 }
 
-export function Tabs({ tabs, active, onChange, className }: TabsProps) {
+export function Tabs<K extends string>({ tabs, active, onChange, className }: TabsProps<K>) {
   return (
     <div
       className={cn(

@@ -10,6 +10,24 @@ export const WINDOW_OPTIONS = [
   { key: '24h', label: '24h', ms: 24 * 60 * 60 * 1000 },
 ] as const
 
+export const BUCKET_OPTIONS: { value: BucketOption; label: string }[] = [
+  { value: 'auto', label: 'Auto' },
+  { value: '5', label: '5 sec' },
+  { value: '10', label: '10 sec' },
+  { value: '30', label: '30 sec' },
+  { value: '60', label: '1 min' },
+  { value: '120', label: '2 min' },
+]
+
+export const REFRESH_OPTIONS: { value: RefreshOption; label: string }[] = [
+  { value: '0', label: 'Off' },
+  ...BUCKET_OPTIONS.flatMap(({ value, label }) => (value === 'auto' ? [] : [{ value, label }])),
+]
+
+export function isValidRange(from: Date | null, to: Date | null): boolean {
+  return from !== null && to !== null && from.getTime() < to.getTime()
+}
+
 export function toDateTimeLocalValue(date: Date) {
   const offsetMs = date.getTimezoneOffset() * 60 * 1000
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16)
@@ -18,8 +36,4 @@ export function toDateTimeLocalValue(date: Date) {
 export function parseDateTimeLocalValue(value: string) {
   const parsed = new Date(value)
   return Number.isNaN(parsed.getTime()) ? null : parsed
-}
-
-export function formatDateRange(from: string, to: string) {
-  return `${new Date(from).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} – ${new Date(to).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
 }

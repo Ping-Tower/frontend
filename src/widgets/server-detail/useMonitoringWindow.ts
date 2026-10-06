@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
+import { formatDateRange } from '@/shared/lib/format'
 import {
   type BucketOption,
-  formatDateRange,
+  isValidRange,
   parseDateTimeLocalValue,
   type RangeMode,
   type RefreshOption,
@@ -10,7 +11,7 @@ import {
   WINDOW_OPTIONS,
 } from './monitoring-window'
 
-interface MonitoringWindowState {
+export interface MonitoringWindowState {
   activeBucketSec: number
   bucketOption: BucketOption
   customRangeDraft: { from: string; to: string }
@@ -79,7 +80,7 @@ export function useMonitoringWindow(intervalSec: number | null | undefined): Mon
 
   const parsedFrom = parseDateTimeLocalValue(customRangeDraft.from)
   const parsedTo = parseDateTimeLocalValue(customRangeDraft.to)
-  const isCustomRangeValid = parsedFrom !== null && parsedTo !== null && parsedFrom.getTime() < parsedTo.getTime()
+  const isCustomRangeValid = isValidRange(parsedFrom, parsedTo)
   const metricsRefetchInterval = rangeMode === 'custom' && refreshMs > 0 ? refreshMs : false
 
   function applyCustomRange() {
