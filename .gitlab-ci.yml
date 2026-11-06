@@ -3,7 +3,7 @@ stages:
   - deploy
 
 variables:
-  DOCKER_IMAGE_NAME: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+  DOCKER_IMAGE_NAME: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
 
 build_image:
   stage: build
@@ -15,41 +15,50 @@ build_image:
     GIT_SUBMODULE_DEPTH: 1
   before_script:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_COMMIT_REF_PROTECTED == "true"'
   script:
-    # VITE_TELEGRAM_BOT_USERNAME is static — same across environments.
-    # VITE_API_URL is left empty: nginx proxies /api/* to the backend at runtime.
-    - docker build --pull
-        --build-arg VITE_TELEGRAM_BOT_USERNAME=$VITE_TELEGRAM_BOT_USERNAME
-        -t $DOCKER_IMAGE_NAME .
-    - docker push $DOCKER_IMAGE_NAME
-  only:
-    - main
-    - stage
+    - docker buildx create --use --driver docker-container --driver-opt network=host
+    - docker buildx build --pull --provenance=false --sbom=false
+        --build-arg VITE_API_URL="$VITE_API_URL"
+        --build-arg VITE_TELEGRAM_BOT_USERNAME="$VITE_TELEGRAM_BOT_USERNAME"
+        --build-arg VITE_SOCIAL_TELEGRAM_URL="$VITE_SOCIAL_TELEGRAM_URL"
+        --build-arg VITE_SOCIAL_GITHUB_URL="$VITE_SOCIAL_GITHUB_URL"
+        --build-arg VITE_SOCIAL_GITLAB_URL="$VITE_SOCIAL_GITLAB_URL"
+        --build-arg VITE_SOCIAL_LINKEDIN_URL="$VITE_SOCIAL_LINKEDIN_URL"
+        --cache-from type=registry,ref=$CI_REGISTRY_IMAGE:buildcache
+        --cache-to type=registry,ref=$CI_REGISTRY_IMAGE:buildcache,mode=max
+        -t $DOCKER_IMAGE_NAME --push .
+  # VITE_* настраиваются в CI/CD Variables проекта.
+  # VITE_API_URL должен оставаться пустым: nginx проксирует /api/* и /hubs/* на api —
+  # иначе SPA ломает cookie/HTTP-only авторизацию. Пустое значениеVariables не задаётся.
 
-.deploy_template:
+deploy:
   stage: deploy
-  image: docker:27.5.0
-  before_script:
-    - eval $(ssh-agent -s)
-    - echo "$SSH_PRIVATE_KEY" | base64 -d | ssh-add -
-    - mkdir -p ~/.ssh && chmod 700 ~/.ssh
-    - echo -e "Host *\n\tStrictHostKeyChecking no\n\tPort $TARGET_PORT" > ~/.ssh/config
-    - docker context create remote-target --docker "host=ssh://$TARGET_USER@$TARGET_HOST"
-  script:
-    - cp $TARGET_ENV_FILE .env
-    - FRONTEND_IMAGE_NAME=$DOCKER_IMAGE_NAME
-      docker --context remote-target compose up -d --remove-orphans
-    - docker --context remote-target image prune -f
-
-deploy_prod:
-  extends: .deploy_template
   needs: [build_image]
-  variables:
-    TARGET_PORT: $SSH_PORT_PROD
-    TARGET_HOST: $SSH_HOST_PROD
-    TARGET_USER: $SSH_USER_PROD
-    TARGET_ENV_FILE: $PROD_ENV_FILE
+  image:
+    name: alpine/kubectl:1.37.1
+    entrypoint: [""]
+  tags: [saas-linux-small-amd64]
+  resource_group: pingtower-production
   environment:
     name: production
-  only:
-    - main
+    url: https://pingtower.tech
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_COMMIT_REF_PROTECTED == "true"'
+      when: manual
+  allow_failure: false
+  manual_confirmation: "Развернуть фронт PingTower в production?"
+  timeout: 25m
+  script:
+    - kubectl config use-context pingtower/infra:pingtower
+    - sed -i "s/REPLACE_WITH_COMMIT_SHA/$CI_COMMIT_SHA/g" k8s/kustomization.yaml
+    - kubectl apply --dry-run=server -k k8s/
+    # gitlab-registry — владелец pingtower-infra.
+    - kubectl -n pingtower wait --for=condition=Ready externalsecret/gitlab-registry --timeout=120s
+    - kubectl -n pingtower get secret gitlab-registry -o name
+    - kubectl -n pingtower apply -f k8s/service.yaml -f k8s/ingress.yaml
+    - kubectl -n pingtower wait --for=create certificate/frontend-tls --timeout=60s
+    - kubectl -n pingtower wait --for=condition=Ready certificate/frontend-tls --timeout=600s
+    - kubectl apply -k k8s/
+    - kubectl -n pingtower rollout status deployment/frontend --timeout=600s
