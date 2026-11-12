@@ -25,6 +25,9 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
     const connection = new signalR.HubConnectionBuilder()
       .withUrl(`${BASE_URL}/hubs/monitoring`, {
         accessTokenFactory: () => token,
+        // Direct WebSockets avoid server affinity during negotiate with multiple API replicas.
+        transport: signalR.HttpTransportType.WebSockets,
+        skipNegotiation: true,
       })
       .withAutomaticReconnect()
       .configureLogging(signalR.LogLevel.Warning)
