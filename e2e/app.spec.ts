@@ -237,30 +237,30 @@ test('major screens meet automated accessibility checks', async ({ page }, testI
 
 test('live SignalR updates change the displayed monitor status', async ({ page }) => {
   await mockApi(page)
+  let sendUpdate: (() => void) | undefined
   await page.routeWebSocket('**/hubs/monitoring**', (ws) => {
+    sendUpdate = () =>
+      ws.send(
+        JSON.stringify({
+          type: 1,
+          target: 'server-status-changed',
+          arguments: [{ serverId: 's1', status: 'DOWN' }],
+        }) + '\u001e',
+      )
     ws.onMessage((message) => {
-      if (String(message).includes('protocol')) {
-        ws.send('{}\u001e')
-        setTimeout(
-          () =>
-            ws.send(
-              JSON.stringify({
-                type: 1,
-                target: 'server-status-changed',
-                arguments: [{ serverId: 's1', status: 'DOWN' }],
-              }) + '\u001e',
-            ),
-          800,
-        )
-      }
+      if (String(message).includes('protocol')) ws.send('{}\u001e')
     })
   })
   await page.goto('/app/servers')
   const row = page
     .getByRole('row')
     .filter({ has: page.getByRole('link', { name: 'Production API ↗' }) })
-  await expect(row).toHaveAttribute('data-status', 'DOWN')
+  // Send after the initial REST snapshot is visible; runner speed must not affect ordering.
+  await expect(row).toHaveAttribute('data-status', 'UP')
   await expect(page.getByText('● Live status connected')).toBeVisible()
+  expect(sendUpdate).toBeDefined()
+  sendUpdate!()
+  await expect(row).toHaveAttribute('data-status', 'DOWN')
 })
 
 test('renders measured charts, protocol metrics and check details', async ({ page }) => {
