@@ -4,7 +4,7 @@ metadata:
   name: frontend
   namespace: pingtower
 spec:
-  replicas: 2
+  replicas: 1
   revisionHistoryLimit: 3
   progressDeadlineSeconds: 600
   strategy:
@@ -18,6 +18,9 @@ spec:
         app: frontend
     spec:
       automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       imagePullSecrets:
         - name: gitlab-registry
       affinity:
@@ -32,6 +35,14 @@ spec:
       containers:
         - name: frontend
           image: registry.gitlab.com/pingtower/frontend:REPLACE_WITH_COMMIT_SHA
+          # Официальный nginx: master стартует под root, биндит :80,
+          # workers уходят под пользователя nginx (setuid), temp-каталоги — chown.
+          # runAsNonRoot + полный drop — после переезда на nginx-unprivileged.
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+              add: [NET_BIND_SERVICE, SETUID, SETGID, CHOWN]
           ports:
             - name: http
               containerPort: 80
