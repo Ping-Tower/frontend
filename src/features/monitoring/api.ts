@@ -34,14 +34,18 @@ export const serverApi = {
   get: (id: string) => api.get<Server>(`/api/servers/${id}`),
   create: (body: { name: string; host: string; port: number; protocol: string; query?: string }) =>
     api.post<Server>('/api/servers', body),
-  update: (id: string, body: { name: string; host: string; port: number; protocol: string; query?: string }) =>
-    api.put<Server>(`/api/servers/${id}`, body),
+  update: (
+    id: string,
+    body: { name: string; host: string; port: number; protocol: string; query?: string },
+  ) => api.put<Server>(`/api/servers/${id}`, body),
   delete: (id: string) => api.delete<void>(`/api/servers/${id}`),
 
   getSettings: (id: string) =>
     api.get<ServerSettingsDto>(`/api/servers/${id}/settings`).then((dto) => dto.pingSettings),
   updateSettings: (id: string, body: Partial<ServerSettings>) =>
-    api.patch<ServerSettings>(`/api/servers/${id}/settings`, body),
+    api
+      .patch<ServerSettingsDto>(`/api/servers/${id}/settings`, body)
+      .then((dto) => dto.pingSettings),
 
   getState: (id: string) => api.get<ServerState>(`/api/servers/${id}/state`),
 

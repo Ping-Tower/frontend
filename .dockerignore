@@ -6,3 +6,7 @@ dist
 *.local
 .git
 .gitlab-ci.yml
+
+coverage
+test-results
+playwright-report

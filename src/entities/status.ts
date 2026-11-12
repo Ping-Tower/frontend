@@ -14,6 +14,14 @@ export function isHttpProtocol(protocol: Protocol) {
   return protocol === 'HTTP' || protocol === 'HTTPS'
 }
 
-export function formatEndpoint({ protocol, host, port }: { protocol: Protocol; host: string; port: number }) {
+export function formatEndpoint({
+  protocol,
+  host,
+  port,
+}: {
+  protocol: Protocol
+  host: string
+  port: number
+}) {
   return protocol === 'ICMP' ? host : `${host}:${port}`
 }

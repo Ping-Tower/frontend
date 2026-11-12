@@ -2,7 +2,12 @@ type Nullable<T> = T | null | undefined
 
 export const EMPTY = '—'
 
-const SHORT_DATE_TIME: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }
+const SHORT_DATE_TIME: Intl.DateTimeFormatOptions = {
+  month: 'short',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+}
 
 export function formatLatency(value: Nullable<number>) {
   return value === null || value === undefined ? EMPTY : `${Math.round(value)} ms`

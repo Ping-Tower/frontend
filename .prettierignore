@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+test-results
+playwright-report
+pnpm-lock.yaml
+public
+
+# Deployment manifests retain their existing formatting.
+k8s/
+docker-compose.yml

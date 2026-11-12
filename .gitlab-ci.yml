@@ -1,9 +1,33 @@
 stages:
+  - test
   - build
   - deploy
 
 variables:
   DOCKER_IMAGE_NAME: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+
+frontend_checks:
+  stage: test
+  image: node:24-bookworm
+  variables:
+    VITE_API_URL: ''
+    VITE_TELEGRAM_BOT_USERNAME: ''
+  before_script:
+    - corepack enable
+    - pnpm install --frozen-lockfile
+    - pnpm exec playwright install --with-deps chromium
+  script:
+    - pnpm lint
+    - pnpm test:coverage
+    - pnpm build
+    - pnpm test:e2e
+  artifacts:
+    when: always
+    expire_in: 7 days
+    paths:
+      - coverage/
+      - test-results/
+      - playwright-report/
 
 build_image:
   stage: build
@@ -20,15 +44,15 @@ build_image:
   script:
     - docker buildx create --use --driver docker-container --driver-opt network=host
     - docker buildx build --pull --provenance=false --sbom=false
-        --build-arg VITE_API_URL="$VITE_API_URL"
-        --build-arg VITE_TELEGRAM_BOT_USERNAME="$VITE_TELEGRAM_BOT_USERNAME"
-        --build-arg VITE_SOCIAL_TELEGRAM_URL="$VITE_SOCIAL_TELEGRAM_URL"
-        --build-arg VITE_SOCIAL_GITHUB_URL="$VITE_SOCIAL_GITHUB_URL"
-        --build-arg VITE_SOCIAL_GITLAB_URL="$VITE_SOCIAL_GITLAB_URL"
-        --build-arg VITE_SOCIAL_LINKEDIN_URL="$VITE_SOCIAL_LINKEDIN_URL"
-        --cache-from type=registry,ref=$CI_REGISTRY_IMAGE:buildcache
-        --cache-to type=registry,ref=$CI_REGISTRY_IMAGE:buildcache,mode=max
-        -t $DOCKER_IMAGE_NAME --push .
+      --build-arg VITE_API_URL="$VITE_API_URL"
+      --build-arg VITE_TELEGRAM_BOT_USERNAME="$VITE_TELEGRAM_BOT_USERNAME"
+      --build-arg VITE_SOCIAL_TELEGRAM_URL="$VITE_SOCIAL_TELEGRAM_URL"
+      --build-arg VITE_SOCIAL_GITHUB_URL="$VITE_SOCIAL_GITHUB_URL"
+      --build-arg VITE_SOCIAL_GITLAB_URL="$VITE_SOCIAL_GITLAB_URL"
+      --build-arg VITE_SOCIAL_LINKEDIN_URL="$VITE_SOCIAL_LINKEDIN_URL"
+      --cache-from type=registry,ref=$CI_REGISTRY_IMAGE:buildcache
+      --cache-to type=registry,ref=$CI_REGISTRY_IMAGE:buildcache,mode=max
+      -t $DOCKER_IMAGE_NAME --push .
   # VITE_* настраиваются в CI/CD Variables проекта.
   # VITE_API_URL должен оставаться пустым: nginx проксирует /api/* и /hubs/* на api —
   # иначе SPA ломает cookie/HTTP-only авторизацию. Пустое значениеVariables не задаётся.
@@ -38,7 +62,7 @@ deploy:
   needs: [build_image]
   image:
     name: alpine/kubectl:1.37.1
-    entrypoint: [""]
+    entrypoint: ['']
   tags: [saas-linux-small-amd64]
   resource_group: pingtower-production
   environment:
@@ -48,7 +72,7 @@ deploy:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_COMMIT_REF_PROTECTED == "true"'
       when: manual
   allow_failure: false
-  manual_confirmation: "Развернуть фронт PingTower в production?"
+  manual_confirmation: 'Развернуть фронт PingTower в production?'
   timeout: 25m
   script:
     - kubectl config use-context pingtower/infra:pingtower

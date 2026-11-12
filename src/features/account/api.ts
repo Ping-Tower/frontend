@@ -11,8 +11,7 @@ export interface CurrentUser {
 export const userApi = {
   me: () => api.get<CurrentUser>('/api/users/me'),
 
-  notificationSettings: () =>
-    api.get<NotificationSettings>('/api/users/notification-settings'),
+  notificationSettings: () => api.get<NotificationSettings>('/api/users/notification-settings'),
 
   updateNotificationSettings: (settings: Partial<NotificationSettings>) =>
     api.patch<NotificationSettings>('/api/users/notification-settings', settings),
