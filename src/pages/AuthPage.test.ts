@@ -91,3 +91,64 @@ it('submits a valid reset link and new password', async () => {
     newPassword: 'newSecret123',
   })
 })
+
+it('offers a confirmation email after a duplicate registration without creating another account', async () => {
+  const fetchMock = vi
+    .fn<typeof fetch>()
+    .mockImplementation(async (url) =>
+      String(url).endsWith('/register')
+        ? new Response(
+            JSON.stringify({
+              title: 'Validation Exception',
+              status: 400,
+              detail:
+                "Validation error at the Domain level.- DuplicateEmail: Email 'alex@example.com' is already taken.",
+            }),
+            { status: 400 },
+          )
+        : ok({ verificationCodeSent: true }),
+    )
+  vi.stubGlobal('fetch', fetchMock)
+  const { router } = await renderApp(AuthPage, { mode: 'register' }, '/register')
+  await fireEvent.update(screen.getByLabelText('Email'), 'alex@example.com')
+  await fireEvent.update(screen.getByLabelText('Username'), 'Alex')
+  await fireEvent.update(screen.getByLabelText(/Password/), 'secret123')
+  await fireEvent.click(screen.getByRole('button', { name: 'Register' }))
+  expect(await screen.findByRole('alert')).not.toHaveTextContent('HTTP 400')
+  await fireEvent.click(screen.getByRole('button', { name: 'Send confirmation email' }))
+  await waitFor(() => expect(router.currentRoute.value.path).toBe('/verify-email'))
+  expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/register'))).toHaveLength(1)
+  const resend = fetchMock.mock.calls.find(([url]) =>
+    String(url).endsWith('/resend-verification-code'),
+  )
+  expect(JSON.parse(resend![1]!.body as string)).toEqual({ email: 'alex@example.com' })
+})
+
+it('recovers an unconfirmed account from login and keeps resend failures visible', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn<typeof fetch>()
+      .mockImplementation(
+        async (url) =>
+          new Response(
+            JSON.stringify(
+              String(url).endsWith('/login')
+                ? { detail: 'Email is not confirmed.' }
+                : {
+                    detail:
+                      'Verification email was requested too frequently. Please try again later.',
+                  },
+            ),
+            { status: String(url).endsWith('/login') ? 401 : 429 },
+          ),
+      ),
+  )
+  await renderApp(AuthPage, { mode: 'login' }, '/login')
+  await fireEvent.update(screen.getByLabelText('Email'), 'alex@example.com')
+  await fireEvent.update(screen.getByLabelText('Password'), 'secret123')
+  await fireEvent.click(screen.getByRole('button', { name: 'Login' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Confirm your email')
+  await fireEvent.click(screen.getByRole('button', { name: 'Send confirmation email' }))
+  expect(await screen.findByText(/requested too frequently/)).toBeVisible()
+})

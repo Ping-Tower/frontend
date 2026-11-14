@@ -14,6 +14,7 @@ export default defineConfig({
       reporter: ['text', 'html', 'json-summary'],
       include: [
         'src/shared/api/client.ts',
+        'src/shared/api/response-error.ts',
         'src/shared/stores/auth.store.ts',
         'src/entities/status.ts',
         'src/features/monitoring/realtime-cache.ts',

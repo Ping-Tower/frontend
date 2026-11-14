@@ -10,6 +10,7 @@ import {
   resetSchema,
   PENDING_VERIFY_EMAIL_KEY,
 } from './schemas'
+import { ApiError } from '@/shared/api/client'
 import { notify } from '@/shared/lib/toast'
 export function useAuthForm(mode: () => string) {
   const route = useRoute(),
@@ -18,9 +19,14 @@ export function useAuthForm(mode: () => string) {
   const errors = ref<Record<string, string>>({})
   const success = ref('')
   const verificationEmail = computed(() =>
-    String(route.query.email ?? sessionStorage.getItem(PENDING_VERIFY_EMAIL_KEY) ?? ''),
+    String(
+      route.query.email || form.email || sessionStorage.getItem(PENDING_VERIFY_EMAIL_KEY) || '',
+    ),
   )
   const mutation = useMutation({
+    onError: (error) => {
+      if (error instanceof ApiError) errors.value = { ...error.fieldErrors }
+    },
     mutationFn: async () => {
       const action = mode()
       errors.value = {}
@@ -71,10 +77,30 @@ export function useAuthForm(mode: () => string) {
     },
   })
   const resend = useMutation({
-    mutationFn: () => authApi.resendVerification(verificationEmail.value),
+    mutationFn: () => {
+      const email = verificationEmail.value.trim()
+      const parsed = emailSchema.safeParse({ email })
+      if (!parsed.success)
+        throw new Error('Enter a valid email address to request a confirmation link.')
+      return authApi.resendVerification(email)
+    },
     onSuccess: () => {
       success.value = 'A new verification link is on its way.'
     },
   })
-  return { form, errors, success, verificationEmail, mutation, verify, resend }
+  function requestVerification() {
+    const email = form.email.trim()
+    const parsed = emailSchema.safeParse({ email })
+    if (!parsed.success) {
+      errors.value = { email: 'Enter a valid email' }
+      return
+    }
+    sessionStorage.setItem(PENDING_VERIFY_EMAIL_KEY, email)
+    resend.mutate(undefined, {
+      onSuccess: () => {
+        void router.push('/verify-email')
+      },
+    })
+  }
+  return { form, errors, success, verificationEmail, mutation, verify, resend, requestVerification }
 }

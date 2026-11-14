@@ -36,7 +36,9 @@ it('requires confirmation and retains the dialog when deletion fails', async () 
   await fireEvent.click(
     within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete monitor' }),
   )
-  expect(await screen.findByRole('alert')).toHaveTextContent('Try later')
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'The service is temporarily unavailable. Please try again shortly.',
+  )
 })
 it('deletes only after confirmation and closes the dialog on success', async () => {
   fetchMock.mockImplementation(async (_url, init) =>

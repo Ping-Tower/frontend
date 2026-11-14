@@ -1,13 +1,13 @@
 <script setup lang="ts">
+import { ApiError } from '@/shared/api/client'
 import { computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AuthLayout from '@/features/auth/components/AuthLayout.vue'
 import { useAuthForm } from '@/features/auth/use-auth-form'
 const props = defineProps<{ mode: string }>()
 const route = useRoute()
-const { form, errors, success, verificationEmail, mutation, verify, resend } = useAuthForm(
-  () => props.mode,
-)
+const { form, errors, success, verificationEmail, mutation, verify, resend, requestVerification } =
+  useAuthForm(() => props.mode)
 const titles: Record<string, string> = {
   login: 'Welcome back',
   register: 'Make room for peace of mind.',
@@ -17,6 +17,13 @@ const titles: Record<string, string> = {
 }
 const title = computed(() =>
   props.mode === 'verify-email' && route.query.code ? 'Confirming your email…' : titles[props.mode],
+)
+const duplicateEmail = computed(
+  () => mutation.error.value instanceof ApiError && mutation.error.value.code === 'duplicate-email',
+)
+const needsConfirmation = computed(
+  () =>
+    mutation.error.value instanceof ApiError && mutation.error.value.code === 'email-unconfirmed',
 )
 const resetComplete = computed(() => !!route.query.email && !!route.query.code)
 watch(
@@ -33,15 +40,24 @@ watch(
 <template>
   <AuthLayout>
     <h1 class="auth-title">{{ title }}</h1>
+    <p v-if="mode === 'verify-email' && !route.query.code" class="text-sm text-muted mb-5">
+      Already registered but haven’t confirmed your email? Request a fresh confirmation link here.
+    </p>
     <template v-if="mode === 'verify-email'">
       <p v-if="verificationEmail" class="auth-description">
-        {{ route.query.code ? 'Verifying' : 'We sent a confirmation link to' }}
+        {{ route.query.code ? 'Verifying' : 'Confirmation email for' }}
         <strong>{{ verificationEmail }}</strong>.
       </p>
-      <p v-else class="auth-description">
-        No registration in progress.
-        <RouterLink to="/register" class="underline">Register first</RouterLink>.
-      </p>
+      <label v-if="!route.query.code" class="field mb-5"
+        ><span>Email</span
+        ><input
+          :value="verificationEmail"
+          @input="form.email = ($event.target as HTMLInputElement).value"
+          class="input"
+          type="email"
+          autocomplete="email"
+          placeholder="you@example.com"
+      /></label>
       <p v-if="verify.error.value" role="alert" class="field-error mb-5">
         {{ verify.error.value.message }}
       </p>
@@ -50,7 +66,6 @@ watch(
       </p>
       <p v-if="success" role="status" class="mb-5">{{ success }}</p>
       <button
-        v-if="verificationEmail"
         class="btn btn-outline w-full"
         :disabled="resend.isPending.value || verify.isPending.value"
         @click="resend.mutate()"
@@ -113,6 +128,27 @@ watch(
       <p v-if="mutation.error.value" role="alert" class="field-error">
         {{ mutation.error.value.message }}
       </p>
+      <div v-if="duplicateEmail" class="flex flex-wrap gap-4 text-sm">
+        <RouterLink to="/login" class="underline underline-offset-4"
+          >Log in to your account</RouterLink
+        >
+        <RouterLink to="/forgot-password" class="underline underline-offset-4"
+          >Reset your password</RouterLink
+        >
+      </div>
+      <div v-if="duplicateEmail || needsConfirmation" class="space-y-3">
+        <button
+          type="button"
+          class="btn btn-outline w-full"
+          :disabled="resend.isPending.value"
+          @click="requestVerification"
+        >
+          {{ resend.isPending.value ? 'Sending…' : 'Send confirmation email' }}
+        </button>
+        <p v-if="resend.error.value" role="alert" class="field-error">
+          {{ resend.error.value.message }}
+        </p>
+      </div>
       <p v-if="success" role="status">{{ success }}</p>
       <button class="btn mt-2 w-full" type="submit" :disabled="mutation.isPending.value">
         {{
@@ -137,6 +173,12 @@ watch(
         :to="mode === 'login' ? '/forgot-password' : '/login'"
         class="text-center text-sm text-muted underline underline-offset-4"
         >{{ mode === 'login' ? 'Forgot password?' : 'Back to login' }}</RouterLink
+      >
+      <RouterLink
+        v-if="mode === 'login' || mode === 'forgot-password'"
+        to="/verify-email"
+        class="text-center text-sm underline underline-offset-4"
+        >Need to confirm your email?</RouterLink
       >
     </form>
   </AuthLayout>

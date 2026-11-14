@@ -337,3 +337,41 @@ test('renders measured charts, protocol metrics and check details', async ({ pag
   await expect(page.getByText('Service unavailable')).toBeVisible()
   expect(errors).toEqual([])
 })
+
+test('an existing unconfirmed account can request a fresh email without registering again', async ({
+  page,
+}) => {
+  let registrationAttempts = 0
+  await page.route(
+    (url) => url.pathname.startsWith('/api/auth/'),
+    (route) => {
+      if (route.request().url().endsWith('/register')) {
+        registrationAttempts++
+        return route.fulfill({
+          status: 400,
+          json: {
+            title: 'Validation Exception',
+            status: 400,
+            detail:
+              "Validation error at the Domain level.- DuplicateEmail: Email 'alex@example.com' is already taken.",
+          },
+        })
+      }
+      if (route.request().url().endsWith('/resend-verification-code'))
+        return route.fulfill({ json: { data: { verificationCodeSent: true } } })
+      return route.fulfill({ status: 401, json: { detail: 'Email is not confirmed.' } })
+    },
+  )
+  await page.goto('/register')
+  await page.getByLabel('Email', { exact: true }).fill('alex@example.com')
+  await page.getByLabel('Username').fill('Alex')
+  await page.getByLabel(/^Password/).fill('secret123')
+  await page.getByRole('button', { name: 'Register', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('An account with this email already exists')
+  await expect(page.getByRole('alert')).not.toContainText('HTTP 400')
+  await page.getByRole('button', { name: 'Send confirmation email' }).click()
+  await expect(page).toHaveURL(/\/verify-email$/)
+  await expect(page.getByRole('button', { name: 'Resend verification link' })).toBeVisible()
+  expect(registrationAttempts).toBe(1)
+  await expectNoOverflow(page)
+})

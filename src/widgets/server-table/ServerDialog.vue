@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ApiError } from '@/shared/api/client'
 import { reactive, ref, watch } from 'vue'
 import type { Server, Protocol } from '@/entities'
 import { PROTOCOLS } from '@/entities/status'
@@ -45,7 +46,12 @@ function submit() {
   }
   mutation.mutate(
     { id: props.editing?.id, body: serverPayload(result.data) },
-    { onSuccess: () => emit('close') },
+    {
+      onSuccess: () => emit('close'),
+      onError: (error) => {
+        if (error instanceof ApiError) errors.value = { ...error.fieldErrors }
+      },
+    },
   )
 }
 </script>
