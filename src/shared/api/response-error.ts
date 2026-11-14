@@ -76,6 +76,12 @@ export function responseError(status: number, payload: unknown, path = ''): Resp
       fieldErrors: {},
     }
   }
+  if (/Telegram login data is invalid or expired/i.test(supplied)) {
+    return {
+      message: 'Telegram could not verify this connection. Open Telegram again and retry.',
+      fieldErrors: {},
+    }
+  }
   const cleaned = clean(supplied)
   const technical =
     /<[^>]+>|\b(?:System\.|StackTrace|SqlException|Npgsql|Microsoft\.|Exception:)|\bat .+\([^)]*\)\s*(?:in |$)/i.test(

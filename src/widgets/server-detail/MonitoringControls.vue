@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Select from '@/shared/ui/Select.vue'
 import type { ReturnTypeWindow } from './window-types'
 import { BUCKET_OPTIONS, REFRESH_OPTIONS, WINDOW_OPTIONS } from './monitoring-window'
 const emit = defineEmits<{ refresh: [] }>()
@@ -43,19 +44,17 @@ function refreshNow() {
           class="input !text-xs" /></label
       ><label class="field"
         ><span>Chart bucket</span
-        ><select v-model="controls.bucket.value" class="input">
-          <option v-for="option in BUCKET_OPTIONS" :key="option.value" :value="option.value">
-            {{ option.label }}
-          </option>
-        </select></label
+        ><Select
+          v-model="controls.bucket.value"
+          aria-label="Chart bucket"
+          :options="BUCKET_OPTIONS" /></label
       ><label class="field"
         ><span>Auto-refresh</span
-        ><select v-model="controls.refresh.value" class="input">
-          <option v-for="option in REFRESH_OPTIONS" :key="option.value" :value="option.value">
-            {{ option.label }}
-          </option>
-        </select></label
-      >
+        ><Select
+          v-model="controls.refresh.value"
+          aria-label="Auto-refresh"
+          :options="REFRESH_OPTIONS"
+      /></label>
     </div>
     <div class="mt-5 flex flex-wrap items-center gap-3">
       <button class="btn btn-sm" :disabled="!window.valid.value" @click="window.apply">

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Select from '@/shared/ui/Select.vue'
 import { computed, ref } from 'vue'
 import { usePings } from '@/features/monitoring/queries'
 import { formatDateTime, formatLatency, formatBytes } from '@/shared/lib/format'
@@ -37,14 +38,23 @@ const sorted = computed(() =>
         </p>
       </div>
       <div class="flex gap-5">
-        <select v-model="result" class="input !text-xs" aria-label="Filter checks">
-          <option value="all">All checks</option>
-          <option value="success">Successful</option>
-          <option value="failed">Failed</option></select
-        ><select v-model="sort" class="input !text-xs" aria-label="Sort checks">
-          <option value="desc">Newest first</option>
-          <option value="asc">Oldest first</option>
-        </select>
+        <Select
+          v-model="result"
+          aria-label="Filter checks"
+          :options="[
+            { value: 'all', label: 'All checks' },
+            { value: 'success', label: 'Successful' },
+            { value: 'failed', label: 'Failed' },
+          ]"
+        />
+        <Select
+          v-model="sort"
+          aria-label="Sort checks"
+          :options="[
+            { value: 'desc', label: 'Newest first' },
+            { value: 'asc', label: 'Oldest first' },
+          ]"
+        />
       </div>
     </div>
     <div v-if="isPending" class="skeleton mt-6 h-40" />

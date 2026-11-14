@@ -54,7 +54,7 @@ function confirm() {
       </div>
       <div class="mt-6 border-t border-line pt-6">
         <p class="mb-5 text-sm">Connect a Telegram account to receive server alerts:</p>
-        <TelegramLogin @auth="connect.mutate($event)" />
+        <TelegramLogin :busy="connect.isPending.value" @auth="connect.mutate($event)" />
         <p v-if="connect.error.value" role="alert" class="field-error mt-4">
           {{ connect.error.value.message }}
         </p>

@@ -1,12 +1,11 @@
 <script setup lang="ts">
+import ThemeToggle from '@/shared/ui/ThemeToggle.vue'
 import Brand from '@/shared/ui/Brand.vue'
 import TowerArtwork from '@/shared/ui/TowerArtwork.vue'
 </script>
 <template>
   <div class="auth-page">
-    <header class="app-header">
-      <Brand /><span class="eyebrow">Monitoring, made clear.</span>
-    </header>
+    <header class="app-header"><Brand /><ThemeToggle /></header>
     <main class="auth-content">
       <div class="w-full max-w-md">
         <p class="eyebrow">Your watch starts here</p>

@@ -2,6 +2,31 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="color-scheme" content="light dark" />
+    <style>
+      html {
+        background: #fff;
+        color-scheme: light;
+      }
+      html[data-theme='dark'] {
+        background: #151719;
+        color-scheme: dark;
+      }
+    </style>
+    <script>
+      // Apply before styles and app startup to avoid a flash of the wrong theme.
+      ;(() => {
+        let saved
+        try {
+          saved = localStorage.getItem('pingtower-theme')
+        } catch {}
+        document.documentElement.dataset.theme =
+          saved === 'dark' ||
+          (saved !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
+            ? 'dark'
+            : 'light'
+      })()
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta

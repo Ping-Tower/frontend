@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ThemeToggle from '@/shared/ui/ThemeToggle.vue'
 import Brand from '@/shared/ui/Brand.vue'
 import TowerArtwork from '@/shared/ui/TowerArtwork.vue'
 import StatusSymbol from '@/shared/ui/StatusSymbol.vue'
@@ -18,7 +19,8 @@ const states = [
   <div class="landing">
     <header class="app-header">
       <Brand />
-      <div class="flex gap-3">
+      <div class="flex items-center gap-3">
+        <ThemeToggle />
         <RouterLink to="/login" class="btn btn-ghost btn-sm">Log in</RouterLink
         ><RouterLink to="/register" class="btn btn-sm">Get started ↗</RouterLink>
       </div>

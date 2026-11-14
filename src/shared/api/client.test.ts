@@ -118,18 +118,16 @@ it('does not clear a newer login when an older retried request returns 401', asy
 })
 
 it('turns network failures into actionable errors and reads ProblemDetails', async () => {
-  fetchMock
-    .mockRejectedValueOnce(new TypeError('Failed to fetch'))
-    .mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({
-          title: 'Validation Exception',
-          status: 400,
-          detail: 'Host is not allowed.',
-        }),
-        { status: 400 },
-      ),
-    )
+  fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch')).mockResolvedValueOnce(
+    new Response(
+      JSON.stringify({
+        title: 'Validation Exception',
+        status: 400,
+        detail: 'Host is not allowed.',
+      }),
+      { status: 400 },
+    ),
+  )
   await expect(api.get('/api/servers')).rejects.toMatchObject({
     status: 0,
     message: expect.stringContaining('internet connection'),

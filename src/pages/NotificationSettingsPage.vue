@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import DurationInput from '@/shared/ui/DurationInput.vue'
+import { useUnsavedChanges } from '@/shared/composables/use-unsaved-changes'
+import UnsavedChangesDialog from '@/shared/ui/UnsavedChangesDialog.vue'
 import { computed, ref } from 'vue'
 import {
   useMe,
@@ -27,6 +30,7 @@ const valid = computed(
     Number(form.value.cooldownSec) >= 0,
 )
 const dirty = computed(() => JSON.stringify(form.value) !== JSON.stringify(initial.value))
+const unsaved = useUnsavedChanges(() => dirty.value)
 const rules = [
   ['onDown', 'Server down', 'Alert when a target crosses its failure threshold.'],
   ['onUp', 'Server recovered', 'One message when the target comes back up.'],
@@ -35,8 +39,8 @@ const rules = [
 function toggle(key: 'onDown' | 'onUp' | 'onLatency') {
   draft.value = { ...form.value, [key]: !form.value[key] }
 }
-function updateCooldown(event: Event) {
-  draft.value = { ...form.value, cooldownSec: (event.target as HTMLInputElement).value }
+function updateCooldown(value: string) {
+  draft.value = { ...form.value, cooldownSec: value }
 }
 function submit() {
   if (valid.value && dirty.value)
@@ -81,25 +85,17 @@ function retry() {
             <span
               ><span class="block font-medium">{{ title }}</span
               ><span class="mt-1 block text-sm text-muted">{{ description }}</span></span
-            ><span class="status-badge" :class="{ 'bg-stroke text-white': form[key] }">{{
+            ><span class="status-badge" :class="{ 'bg-stroke text-surface-base': form[key] }">{{
               form[key] ? 'On' : 'Off'
-            }}</span></button
-          ><label class="field mt-4"
-            ><span>Cooldown (seconds)</span
-            ><input
-              :value="form.cooldownSec"
-              class="input"
-              type="number"
-              min="0"
-              step="1"
-              :aria-invalid="!valid"
-              @input="updateCooldown"
-            /><span class="text-muted"
-              >Repeated events of the same type wait until this cooldown ends.</span
-            ></label
-          >
+            }}</span>
+          </button>
+          <DurationInput
+            :model-value="form.cooldownSec"
+            :invalid="!valid"
+            @update:model-value="updateCooldown"
+          />
           <p v-if="!valid" role="alert" class="field-error mt-3">
-            Cooldown must be a non-negative whole number.
+            Enter a duration of zero or more whole seconds.
           </p>
           <p v-if="save.error.value" role="alert" class="field-error mt-3">
             {{ save.error.value.message }}
@@ -150,4 +146,9 @@ function retry() {
       </aside>
     </div>
   </div>
+  <UnsavedChangesDialog
+    :open="unsaved.open.value"
+    @stay="unsaved.stay"
+    @discard="unsaved.discard"
+  />
 </template>

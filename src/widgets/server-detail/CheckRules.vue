@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useUnsavedChanges } from '@/shared/composables/use-unsaved-changes'
+import UnsavedChangesDialog from '@/shared/ui/UnsavedChangesDialog.vue'
 import { computed, ref } from 'vue'
 import { useServerSettings, useUpdateSettings } from '@/features/monitoring/queries'
 import Feedback from '@/shared/ui/Feedback.vue'
@@ -27,6 +29,13 @@ const valid = computed(() =>
       (Number.isSafeInteger(Number(form.value[key])) && Number(form.value[key]) >= min),
   ),
 )
+const dirty = computed(
+  () =>
+    !!draft.value &&
+    fields.some(([key]) => form.value[key] !== String(settings.value?.[key] ?? '')),
+)
+const unsaved = useUnsavedChanges(dirty)
+defineExpose({ confirmLeave: unsaved.confirmLeave })
 function update(key: keyof Draft, event: Event) {
   draft.value = { ...form.value, [key]: (event.target as HTMLInputElement).value }
 }
@@ -85,4 +94,9 @@ function save() {
       </div>
     </form>
   </section>
+  <UnsavedChangesDialog
+    :open="unsaved.open.value"
+    @stay="unsaved.stay"
+    @discard="unsaved.discard"
+  />
 </template>

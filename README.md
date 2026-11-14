@@ -16,8 +16,9 @@ pnpm dev
 ```
 
 `VITE_API_URL` points to the API during local development. Leave it empty in production:
-nginx proxies `/api` and `/hubs` to the backend. `VITE_TELEGRAM_BOT_USERNAME` enables the
-Telegram Login Widget. Without it, the interface explains that connection is unavailable.
+nginx proxies `/api` and `/hubs` to the backend. `VITE_TELEGRAM_BOT_USERNAME` and the public numeric
+`VITE_TELEGRAM_BOT_ID` enable the styled Telegram login button using Telegram’s signed login SDK.
+Without both values, the interface explains that connection is unavailable. Neither value is a bot token.
 
 Production image: `docker compose up -d --build`. Whole stack: `make -C ../infra up`.
 
@@ -52,6 +53,12 @@ Bricolage Grotesque headings, Instrument Sans interface text, and DM Mono measur
 The original mark and bundled fonts are stored locally in `public/`; their font licenses
 are preserved in `public/fonts/LICENSE.txt`. Tokens and responsive rules live in
 `src/index.css`. Status uses shape and label; `UNKNOWN` is never presented as degraded.
+
+The theme follows the system until explicitly switched in the header. An early head script and
+critical background colors apply the saved theme before Vue loads; chart colors update in place.
+Settings warn before discarding unsaved edits on route or monitor-tab changes. Reloading or closing
+a dirty page uses the browser’s own warning. Cooldown accepts seconds, minutes or hours and sends
+whole seconds to the API. Styled Reka selects support keyboard navigation and work within dialogs.
 
 ## Architecture
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Select from '@/shared/ui/Select.vue'
 import { ApiError } from '@/shared/api/client'
 import { reactive, ref, watch } from 'vue'
 import type { Server, Protocol } from '@/entities'
@@ -96,10 +97,12 @@ function submit() {
           /><span v-if="errors.port" class="field-error">{{ errors.port }}</span></label
         ><label class="field"
           ><span>Protocol</span
-          ><select v-model="form.protocol" class="input" @change="changeProtocol">
-            <option v-for="protocol in PROTOCOLS" :key="protocol">{{ protocol }}</option>
-          </select></label
-        >
+          ><Select
+            v-model="form.protocol"
+            aria-label="Protocol"
+            :options="PROTOCOLS.map((p) => ({ value: p, label: p }))"
+            @update:model-value="changeProtocol"
+        /></label>
       </div>
       <label v-if="form.protocol !== 'ICMP'" class="field"
         ><span>Query path (optional)</span

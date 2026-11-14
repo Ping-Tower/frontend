@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Select from '@/shared/ui/Select.vue'
 import { computed, ref } from 'vue'
 import type { Server } from '@/entities'
 import { PROTOCOLS, formatEndpoint } from '@/entities/status'
@@ -50,16 +51,25 @@ function confirmDelete() {
         class="input min-w-40 flex-1"
         placeholder="Find a monitor…"
         aria-label="Search monitors"
-      /><select v-model="status" class="input !w-auto" aria-label="Filter by status">
-        <option value="all">All statuses</option>
-        <option value="UP">Up</option>
-        <option value="DOWN">Down</option>
-        <option value="UNKNOWN">Unknown</option>
-        <option value="paused">Paused</option></select
-      ><select v-model="protocol" class="input !w-auto" aria-label="Filter by protocol">
-        <option value="all">All protocols</option>
-        <option v-for="p in PROTOCOLS" :key="p">{{ p }}</option>
-      </select>
+      /><Select
+        v-model="status"
+        aria-label="Filter by status"
+        :options="[
+          { value: 'all', label: 'All statuses' },
+          { value: 'UP', label: 'Up' },
+          { value: 'DOWN', label: 'Down' },
+          { value: 'UNKNOWN', label: 'Unknown' },
+          { value: 'paused', label: 'Paused' },
+        ]"
+      />
+      <Select
+        v-model="protocol"
+        aria-label="Filter by protocol"
+        :options="[
+          { value: 'all', label: 'All protocols' },
+          ...PROTOCOLS.map((p) => ({ value: p, label: p })),
+        ]"
+      />
     </div>
     <Feedback v-if="isError" title="Could not load monitors." @retry="refetch()" />
     <div v-else-if="isPending" aria-label="Loading monitors" class="space-y-4">

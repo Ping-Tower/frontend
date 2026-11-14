@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useTheme } from '@/shared/lib/theme'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
@@ -28,60 +29,93 @@ const props = defineProps<{
   metric?: 'latency' | 'dns' | 'loss' | 'rtt' | 'traffic'
   threshold?: number | null
 }>()
+const theme = useTheme()
+const palette = computed(() =>
+  theme.value === 'dark'
+    ? {
+        line: '#e6e8e5',
+        muted: '#a6adb3',
+        second: '#c2c9ce',
+        third: '#9ba5ae',
+        fourth: '#808c96',
+        border: '#3d444b',
+        grid: '#30363b',
+        background: '#1b1e21',
+        fill: '#e6e8e51a',
+        panel: '#24282c',
+      }
+    : {
+        line: '#0a0a0a',
+        muted: '#6b6b6b',
+        second: '#555',
+        third: '#888',
+        fourth: '#aaa',
+        border: '#d9d9d9',
+        grid: '#eaeae6',
+        background: '#fff',
+        fill: '#0a0a0a10',
+        panel: '#f4f4f2',
+      },
+)
 const series = computed(() =>
   props.metric === 'dns'
-    ? [['avgDnsLookupMs', 'DNS', '#0a0a0a', 'solid']]
+    ? [['avgDnsLookupMs', 'DNS', palette.value.line, 'solid']]
     : props.metric === 'loss'
-      ? [['avgPacketLossPercent', 'Packet loss', '#0a0a0a', 'solid']]
+      ? [['avgPacketLossPercent', 'Packet loss', palette.value.line, 'solid']]
       : props.metric === 'rtt'
         ? [
-            ['avgRttMinMs', 'Minimum RTT', '#0a0a0a', 'solid'],
-            ['avgRttMaxMs', 'Maximum RTT', '#777', 'dashed'],
+            ['avgRttMinMs', 'Minimum RTT', palette.value.line, 'solid'],
+            ['avgRttMaxMs', 'Maximum RTT', palette.value.second, 'dashed'],
           ]
         : props.metric === 'traffic'
           ? [
-              ['avgSentBytes', 'Sent', '#0a0a0a', 'solid'],
-              ['avgReceivedBytes', 'Received', '#777', 'dashed'],
+              ['avgSentBytes', 'Sent', palette.value.line, 'solid'],
+              ['avgReceivedBytes', 'Received', palette.value.second, 'dashed'],
             ]
           : [
-              ['avgLatencyMs', 'Average', '#0a0a0a', 'solid'],
-              ['p50LatencyMs', 'P50', '#555', 'dotted'],
-              ['p90LatencyMs', 'P90', '#888', 'dashed'],
-              ['p99LatencyMs', 'P99', '#aaa', 'dotted'],
+              ['avgLatencyMs', 'Average', palette.value.line, 'solid'],
+              ['p50LatencyMs', 'P50', palette.value.second, 'dotted'],
+              ['p90LatencyMs', 'P90', palette.value.third, 'dashed'],
+              ['p99LatencyMs', 'P99', palette.value.fourth, 'dotted'],
             ],
 )
 const unit = computed(() =>
   props.metric === 'loss' ? '%' : props.metric === 'traffic' ? ' B' : ' ms',
 )
 const option = computed(() => ({
-  animation: !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  animation: false,
   aria: {
     enabled: true,
     description: `${props.metric ?? 'latency'} measurements over the selected time range. Missing samples are gaps.`,
   },
-  textStyle: { fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#6b6b6b' },
+  textStyle: { fontFamily: 'DM Mono, monospace', fontSize: 11, color: palette.value.muted },
   grid: { left: 56, right: 24, top: 50, bottom: 80 },
-  legend: { top: 0, left: 0, icon: 'line', textStyle: { fontSize: 11, color: '#6b6b6b' } },
+  legend: {
+    top: 0,
+    left: 0,
+    icon: 'line',
+    textStyle: { fontSize: 11, color: palette.value.muted },
+  },
   tooltip: {
     trigger: 'axis',
     confine: true,
     renderMode: 'richText',
-    backgroundColor: '#fff',
-    borderColor: '#0a0a0a',
-    textStyle: { color: '#0a0a0a', fontSize: 12 },
+    backgroundColor: palette.value.background,
+    borderColor: palette.value.line,
+    textStyle: { color: palette.value.line, fontSize: 12 },
     valueFormatter: (value: unknown) =>
       value == null ? 'No sample' : `${Number(value).toFixed(1)}${unit.value}`,
   },
   xAxis: {
     type: 'time',
-    axisLine: { lineStyle: { color: '#d9d9d9' } },
+    axisLine: { lineStyle: { color: palette.value.border } },
     axisTick: { show: false },
     splitLine: { show: false },
   },
   yAxis: {
     type: 'value',
     axisLabel: { formatter: `{value}${unit.value}` },
-    splitLine: { lineStyle: { color: '#eaeae6' } },
+    splitLine: { lineStyle: { color: palette.value.grid } },
   },
   dataZoom: [
     { type: 'inside', filterMode: 'none' },
@@ -89,10 +123,14 @@ const option = computed(() => ({
       type: 'slider',
       height: 22,
       bottom: 10,
-      borderColor: '#d9d9d9',
-      fillerColor: '#0a0a0a10',
-      handleStyle: { color: '#0a0a0a' },
-      dataBackground: { lineStyle: { color: '#aaa' }, areaStyle: { color: '#f4f4f2' } },
+      borderColor: palette.value.border,
+      fillerColor: palette.value.fill,
+      handleStyle: { color: palette.value.line },
+      textStyle: { color: palette.value.muted },
+      dataBackground: {
+        lineStyle: { color: palette.value.fourth },
+        areaStyle: { color: palette.value.panel },
+      },
     },
   ],
   series: series.value.map(([key, name, color, type], index) => ({
@@ -108,9 +146,9 @@ const option = computed(() => ({
           markLine: {
             silent: true,
             symbol: 'none',
-            lineStyle: { color: '#0a0a0a', type: 'dashed' },
+            lineStyle: { color: palette.value.line, type: 'dashed' },
             data: [{ yAxis: props.threshold, name: 'Threshold' }],
-            label: { formatter: 'Threshold' },
+            label: { formatter: 'Threshold', color: palette.value.muted },
           },
         }
       : {}),

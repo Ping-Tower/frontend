@@ -163,10 +163,12 @@ test('creates, edits, filters and deletes a monitor', async ({ page }) => {
   await page.getByLabel('Name', { exact: true }).fill('Renamed website')
   await page.getByRole('button', { name: 'Update', exact: true }).click()
   await expect(page.getByRole('link', { name: 'Renamed website ↗' })).toBeVisible()
-  await page.getByLabel('Filter by status').selectOption('DOWN')
+  await page.getByRole('combobox', { name: 'Filter by status' }).click()
+  await page.getByRole('option', { name: 'Down', exact: true }).click()
   await expect(page.getByRole('link', { name: 'Mail ↗' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Production API ↗' })).toHaveCount(0)
-  await page.getByLabel('Filter by status').selectOption('all')
+  await page.getByRole('combobox', { name: 'Filter by status' }).click()
+  await page.getByRole('option', { name: 'All statuses', exact: true }).click()
   await page.getByLabel('Search monitors').fill('Renamed')
   await page.getByRole('button', { name: 'Delete Renamed website', exact: true }).click()
   await page
@@ -237,6 +239,7 @@ test('major screens meet automated accessibility checks', async ({ page }, testI
 
 test('live SignalR updates change the displayed monitor status', async ({ page }) => {
   await mockApi(page)
+  let handshakeComplete = false
   let sendUpdate: (() => void) | undefined
   await page.routeWebSocket('**/hubs/monitoring**', (ws) => {
     sendUpdate = () =>
@@ -248,7 +251,10 @@ test('live SignalR updates change the displayed monitor status', async ({ page }
         }) + '\u001e',
       )
     ws.onMessage((message) => {
-      if (String(message).includes('protocol')) ws.send('{}\u001e')
+      if (String(message).includes('protocol')) {
+        ws.send('{}\u001e')
+        handshakeComplete = true
+      }
     })
   })
   await page.goto('/app/servers')
@@ -257,7 +263,7 @@ test('live SignalR updates change the displayed monitor status', async ({ page }
     .filter({ has: page.getByRole('link', { name: 'Production API ↗' }) })
   // Send after the initial REST snapshot is visible; runner speed must not affect ordering.
   await expect(row).toHaveAttribute('data-status', 'UP')
-  await expect(page.getByText('● Live status connected')).toBeVisible()
+  await expect.poll(() => handshakeComplete).toBe(true)
   expect(sendUpdate).toBeDefined()
   sendUpdate!()
   await expect(row).toHaveAttribute('data-status', 'DOWN')
@@ -374,4 +380,157 @@ test('an existing unconfirmed account can request a fresh email without register
   await expect(page.getByRole('button', { name: 'Resend verification link' })).toBeVisible()
   expect(registrationAttempts).toBe(1)
   await expectNoOverflow(page)
+})
+
+test('unsaved notification edits can be kept, reset or discarded before navigation', async ({
+  page,
+}) => {
+  await mockApi(page)
+  await page.goto('/app/settings/notifications')
+  await page.getByRole('button', { name: /Server down/ }).click()
+  await page.getByRole('link', { name: 'Integrations', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Unsaved changes' })
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('button', { name: 'Stay on this page' }).click()
+  await expect(page).toHaveURL(/notifications$/)
+  await expect(page.getByRole('button', { name: /Server down/ })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  )
+  await page.getByRole('link', { name: 'Integrations', exact: true }).click()
+  await dialog.press('Escape')
+  await expect(page).toHaveURL(/notifications$/)
+  await page.getByRole('button', { name: 'Reset', exact: true }).click()
+  await page.getByRole('link', { name: 'Integrations', exact: true }).click()
+  await expect(page).toHaveURL(/integrations$/)
+  await page.getByRole('link', { name: 'Notifications', exact: true }).click()
+  await page.getByRole('button', { name: /Server recovered/ }).click()
+  await page.getByRole('link', { name: 'Monitors', exact: true }).click()
+  await dialog.getByRole('button', { name: 'Discard and leave' }).click()
+  await expect(page).toHaveURL(/\/servers$/)
+})
+
+test('monitor settings guard tab changes and route navigation', async ({ page }) => {
+  await mockApi(page)
+  await page.goto('/app/servers/s1')
+  await page.getByRole('tab', { name: 'Settings', exact: true }).click()
+  await page.getByLabel('Interval (sec)').fill('30')
+  await page.getByRole('tab', { name: 'Logs', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Unsaved changes' })
+  await dialog.getByRole('button', { name: 'Stay on this page' }).click()
+  await expect(page.getByLabel('Interval (sec)')).toHaveValue('30')
+  await page.getByRole('link', { name: 'Notifications', exact: true }).click()
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('button', { name: 'Stay on this page' }).click()
+  await page.getByRole('tab', { name: 'Logs', exact: true }).click()
+  await dialog.getByRole('button', { name: 'Discard and leave' }).click()
+  await expect(page.getByRole('tab', { name: 'Logs', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+})
+
+test('cooldown switches units without changing duration and saves hours as seconds', async ({
+  page,
+}) => {
+  await mockApi(page)
+  let saved: unknown
+  page.on('request', (request) => {
+    if (request.method() === 'PATCH') saved = request.postDataJSON()
+  })
+  await page.goto('/app/settings/notifications')
+  await expect(page.getByLabel('Cooldown', { exact: true })).toHaveValue('10')
+  await expect(page.getByRole('combobox', { name: 'Cooldown unit' })).toContainText('Minutes')
+  await page.getByRole('combobox', { name: 'Cooldown unit' }).click()
+  await page.getByRole('option', { name: 'Seconds', exact: true }).click()
+  await expect(page.getByLabel('Cooldown', { exact: true })).toHaveValue('600')
+  await expect(page.getByRole('button', { name: 'Save preferences' })).toBeDisabled()
+  await page.getByRole('combobox', { name: 'Cooldown unit' }).click()
+  await page.getByRole('option', { name: 'Hours', exact: true }).click()
+  await page.getByLabel('Cooldown', { exact: true }).fill('1.5')
+  await page.getByRole('button', { name: 'Save preferences' }).click()
+  await expect(page.getByRole('button', { name: 'Save preferences' })).toBeDisabled()
+  expect(saved).toMatchObject({ cooldownSec: 5400 })
+  await expectNoOverflow(page)
+})
+
+test('protocol select works inside a modal with keyboard navigation', async ({ page }) => {
+  await mockApi(page)
+  await page.goto('/app/servers')
+  await page.getByRole('button', { name: '+ Add monitor', exact: true }).click()
+  const protocol = page.getByRole('combobox', { name: 'Protocol', exact: true })
+  await protocol.focus()
+  await protocol.press('ArrowDown')
+  await page.getByRole('listbox').press('End')
+  await expect(page.getByRole('option', { name: 'ICMP', exact: true })).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(protocol).toContainText('ICMP')
+  await expect(page.getByLabel('Port', { exact: true })).toHaveCount(0)
+})
+
+test('header uses the current profile username and omits the connection label', async ({
+  page,
+}) => {
+  await mockApi(page)
+  await page.addInitScript(
+    (s) =>
+      localStorage.setItem(
+        'pingtower-auth',
+        JSON.stringify({ state: { ...s, userName: 'old@example.com' }, version: 0 }),
+      ),
+    session,
+  )
+  await page.goto('/app/servers')
+  await expect(page.locator('header')).toContainText('Alex')
+  await expect(page.locator('header')).not.toContainText('old@example.com')
+  await expect(page.getByText('Live status connected')).toHaveCount(0)
+})
+
+test('theme is applied before app scripts and persists without changing the layout', async ({
+  page,
+}) => {
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await page.route('**/src/main.ts', (route) => route.abort())
+  await page.goto('/')
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await expect(page.locator('html')).toHaveCSS('background-color', 'rgb(21, 23, 25)')
+  await page.unroute('**/src/main.ts')
+  await page.reload()
+  await page.getByRole('button', { name: 'Switch to light theme' }).click()
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(255, 255, 255)')
+  await page.reload()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+  const before = await page.getByRole('heading', { level: 1 }).boundingBox()
+  await page.getByRole('button', { name: 'Switch to dark theme' }).click()
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(21, 23, 25)')
+  expect(await page.getByRole('heading', { level: 1 }).boundingBox()).toEqual(before)
+  await page.reload()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+})
+
+test('dark theme keeps key screens and dropdowns accessible', async ({ page }, testInfo) => {
+  const { default: AxeBuilder } = await import('@axe-core/playwright')
+  await mockApi(page)
+  await page.emulateMedia({ colorScheme: 'dark' })
+  for (const path of [
+    '/login',
+    '/app/servers',
+    '/app/settings/notifications',
+    '/app/settings/integrations',
+  ]) {
+    await page.goto(path)
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    if (path.endsWith('/servers')) {
+      await expect(page.getByRole('link', { name: 'Mail ↗' })).toBeVisible()
+      await page.getByRole('combobox', { name: 'Filter by status' }).click()
+      await expect(page.getByRole('option', { name: 'Up', exact: true })).toBeVisible()
+    }
+    const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()
+    expect(results.violations).toEqual([])
+    await expectNoOverflow(page)
+    await page.screenshot({
+      path: testInfo.outputPath(`dark-${path.split('/').pop()}.png`),
+      fullPage: true,
+    })
+  }
 })

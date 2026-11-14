@@ -52,11 +52,11 @@ watch(
         ><span>Email</span
         ><input
           :value="verificationEmail"
-          @input="form.email = ($event.target as HTMLInputElement).value"
           class="input"
           type="email"
           autocomplete="email"
           placeholder="you@example.com"
+          @input="form.email = ($event.target as HTMLInputElement).value"
       /></label>
       <p v-if="verify.error.value" role="alert" class="field-error mb-5">
         {{ verify.error.value.message }}

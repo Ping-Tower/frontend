@@ -17,11 +17,27 @@ it('combines name/host search, status and protocol filters', async () => {
   expect(screen.getByRole('link', { name: 'Mail ↗' })).toBeVisible()
   expect(screen.queryByRole('link', { name: 'Production API ↗' })).not.toBeInTheDocument()
   await fireEvent.update(screen.getByLabelText('Search monitors'), '')
-  await fireEvent.update(screen.getByLabelText('Filter by status'), 'UP')
-  await fireEvent.update(screen.getByLabelText('Filter by protocol'), 'TCP')
+  await fireEvent.keyDown(screen.getByRole('combobox', { name: 'Filter by status' }), {
+    key: 'ArrowDown',
+  })
+  await fireEvent.keyDown(await screen.findByRole('option', { name: 'Up' }), { key: 'Enter' })
+  await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
+  await fireEvent.keyDown(screen.getByRole('combobox', { name: 'Filter by protocol' }), {
+    key: 'ArrowDown',
+  })
+  await fireEvent.keyDown(await screen.findByRole('option', { name: 'TCP' }), { key: 'Enter' })
+  await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
   expect(screen.getByText(/No monitors match/)).toBeVisible()
-  await fireEvent.update(screen.getByLabelText('Filter by status'), 'paused')
-  await fireEvent.update(screen.getByLabelText('Filter by protocol'), 'ICMP')
+  await fireEvent.keyDown(screen.getByRole('combobox', { name: 'Filter by status' }), {
+    key: 'ArrowDown',
+  })
+  await fireEvent.keyDown(await screen.findByRole('option', { name: 'Paused' }), { key: 'Enter' })
+  await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
+  await fireEvent.keyDown(screen.getByRole('combobox', { name: 'Filter by protocol' }), {
+    key: 'ArrowDown',
+  })
+  await fireEvent.keyDown(await screen.findByRole('option', { name: 'ICMP' }), { key: 'Enter' })
+  await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
   expect(screen.getByRole('link', { name: 'Router ↗' })).toBeVisible()
 })
 it('requires confirmation and retains the dialog when deletion fails', async () => {

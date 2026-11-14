@@ -40,6 +40,13 @@ const baseline = useBaseline(
   () => window.filters.value.to,
 )
 const tab = ref('overview')
+const rulesPanel = ref<{ confirmLeave: () => boolean | Promise<boolean> }>()
+async function selectTab(key: string) {
+  if (key === tab.value) return
+  if (tab.value === 'settings' && rulesPanel.value && !(await rulesPanel.value.confirmLeave()))
+    return
+  tab.value = key
+}
 const tabs = [
   ['overview', 'Overview'],
   ['protocol', 'Protocol metrics'],
@@ -68,7 +75,7 @@ function onTabKey(event: KeyboardEvent, index: number) {
             : -1
   if (next < 0) return
   event.preventDefault()
-  tab.value = tabs[next][0]
+  void selectTab(tabs[next][0])
   const buttons = (
     event.currentTarget as HTMLElement
   ).parentElement?.querySelectorAll<HTMLButtonElement>('button')
@@ -116,7 +123,7 @@ function onTabKey(event: KeyboardEvent, index: number) {
           :aria-selected="tab === key"
           :aria-controls="`panel-${key}`"
           :tabindex="tab === key ? 0 : -1"
-          @click="tab = key"
+          @click="selectTab(key)"
           @keydown="onTabKey($event, index)"
         >
           {{ label }}
@@ -167,7 +174,7 @@ function onTabKey(event: KeyboardEvent, index: number) {
           :server-id="serverId"
           :from="window.filters.value.from!"
           :to="window.filters.value.to!"
-        /><CheckRules v-else :server-id="serverId" /></div
+        /><CheckRules v-else ref="rulesPanel" :server-id="serverId" /></div
     ></template>
   </div>
 </template>
