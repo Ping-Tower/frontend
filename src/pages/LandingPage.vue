@@ -25,7 +25,14 @@ const states = [
     </header>
     <main>
       <section class="landing-hero">
-        <p class="eyebrow">Uptime monitoring / HTTP · HTTPS · TCP · ICMP</p>
+        <div class="hero-kicker">
+          <p class="hero-kicker-label">Uptime monitoring</p>
+          <ul class="hero-protocols" aria-label="Supported protocols">
+            <li v-for="protocol in ['HTTP', 'HTTPS', 'TCP', 'ICMP']" :key="protocol">
+              {{ protocol }}
+            </li>
+          </ul>
+        </div>
         <h1>Know what’s up.<br />Get on with life.</h1>
         <div class="mt-10 grid items-center gap-10 md:grid-cols-[1.2fr_1fr]">
           <div>
