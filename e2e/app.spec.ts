@@ -542,3 +542,25 @@ test('dark theme keeps key screens and dropdowns accessible', async ({ page }, t
     })
   }
 })
+
+test('selecting text beyond a monitor dialog preserves the draft; clicking the backdrop closes it', async ({
+  page,
+}) => {
+  await mockApi(page)
+  await page.goto('/app/servers')
+  await page.getByRole('button', { name: '+ Add monitor', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Add monitor' })
+  const name = page.getByLabel('Name', { exact: true })
+  await name.fill('Keep this monitor name')
+  const field = (await name.boundingBox())!
+  const bounds = (await dialog.boundingBox())!
+  const outside = { x: Math.max(1, bounds.x - 8), y: field.y + field.height / 2 }
+  await page.mouse.move(field.x + 100, outside.y)
+  await page.mouse.down()
+  await page.mouse.move(outside.x, outside.y, { steps: 8 })
+  await page.mouse.up()
+  await expect(dialog).toBeVisible()
+  await expect(name).toHaveValue('Keep this monitor name')
+  await page.mouse.click(outside.x, outside.y)
+  await expect(dialog).not.toBeVisible()
+})

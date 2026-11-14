@@ -5,7 +5,9 @@ const emit = defineEmits<{ close: [] }>()
 const dialog = ref<HTMLDialogElement>()
 const titleId = useId(),
   descriptionId = useId()
+let startedOnBackdrop = false
 function sync() {
+  startedOnBackdrop = false
   if (props.open && !dialog.value?.open) dialog.value?.showModal()
   else if (!props.open) dialog.value?.close()
 }
@@ -15,17 +17,25 @@ function cancel(event: Event) {
   event.preventDefault()
   if (!props.busy) emit('close')
 }
+function isBackdrop(event: MouseEvent) {
+  const element = dialog.value
+  if (!element || event.target !== element) return false
+  const r = element.getBoundingClientRect()
+  return (
+    event.clientX < r.left ||
+    event.clientX > r.right ||
+    event.clientY < r.top ||
+    event.clientY > r.bottom
+  )
+}
+function pointerDown(event: PointerEvent) {
+  startedOnBackdrop = event.button === 0 && !props.busy && isBackdrop(event)
+}
 function backdrop(event: MouseEvent) {
-  if (event.target === dialog.value && !props.busy) {
-    const r = dialog.value!.getBoundingClientRect()
-    if (
-      event.clientX < r.left ||
-      event.clientX > r.right ||
-      event.clientY < r.top ||
-      event.clientY > r.bottom
-    )
-      emit('close')
-  }
+  // A selection can start inside the form and end on the backdrop. Preserve that draft.
+  const dismiss = startedOnBackdrop && isBackdrop(event)
+  startedOnBackdrop = false
+  if (dismiss && !props.busy) emit('close')
 }
 </script>
 <template>
@@ -36,6 +46,8 @@ function backdrop(event: MouseEvent) {
       :aria-labelledby="titleId"
       :aria-describedby="description ? descriptionId : undefined"
       @cancel="cancel"
+      @pointerdown.capture="pointerDown"
+      @pointercancel="startedOnBackdrop = false"
       @click="backdrop"
     >
       <h2 :id="titleId" class="text-3xl">{{ title }}</h2>
