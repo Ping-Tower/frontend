@@ -102,9 +102,8 @@ h3 {
   gap: 32px;
 }
 .eyebrow {
-  font: 400 11px var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
+  font: 500 13px/1.5 var(--font-sans);
+  letter-spacing: 0.01em;
   color: var(--color-muted);
 }
 .page-title {
