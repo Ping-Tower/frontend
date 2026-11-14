@@ -38,7 +38,6 @@ const nav = [
         <RouterLink v-for="item in nav" :key="item.to" :to="item.to">{{ item.label }}</RouterLink>
       </nav>
       <div class="flex items-center gap-3">
-        <ThemeToggle />
         <span class="max-w-28 truncate text-xs text-muted">{{ displayName }}</span><button
           class="btn btn-outline btn-sm"
           :disabled="logout.isPending.value"
@@ -49,6 +48,8 @@ const nav = [
       </div>
     </header>
     <main id="main-content" class="min-w-0 flex-1"><RouterView :key="$route.path" /></main>
-    <footer class="app-footer"><span>Four protocols. One clear picture.</span></footer>
+    <footer class="app-footer">
+      <span>Four protocols. One clear picture.</span><ThemeToggle />
+    </footer>
   </div>
 </template>

@@ -54,7 +54,7 @@ The original mark and bundled fonts are stored locally in `public/`; their font 
 are preserved in `public/fonts/LICENSE.txt`. Tokens and responsive rules live in
 `src/index.css`. Status uses shape and label; `UNKNOWN` is never presented as degraded.
 
-The theme follows the system until explicitly switched in the header. An early head script and
+The theme follows the system until explicitly switched in the footer. An early head script and
 critical background colors apply the saved theme before Vue loads; chart colors update in place.
 Settings warn before discarding unsaved edits on route or monitor-tab changes. Reloading or closing
 a dirty page uses the browser’s own warning. Cooldown accepts seconds, minutes or hours and sends

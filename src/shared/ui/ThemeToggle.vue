@@ -35,5 +35,6 @@ const theme = useTheme()
     >
       <path d="M20.7 13A9 9 0 0 1 11 3.3 9 9 0 1 0 20.7 13Z" />
     </svg>
+    <span>{{ theme === 'dark' ? 'Light theme' : 'Dark theme' }}</span>
   </button>
 </template>

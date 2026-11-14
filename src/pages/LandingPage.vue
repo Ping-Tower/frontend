@@ -20,7 +20,6 @@ const states = [
     <header class="app-header">
       <Brand />
       <div class="flex items-center gap-3">
-        <ThemeToggle />
         <RouterLink to="/login" class="btn btn-ghost btn-sm">Log in</RouterLink
         ><RouterLink to="/register" class="btn btn-sm">Get started ↗</RouterLink>
       </div>
@@ -91,8 +90,7 @@ const states = [
       </section>
     </main>
     <footer class="app-footer">
-      <Brand /><span>Four protocols. One clear picture.</span
-      ><RouterLink to="/login">Log in ↗</RouterLink>
+      <Brand /><span>Four protocols. One clear picture.</span><ThemeToggle />
     </footer>
   </div>
 </template>

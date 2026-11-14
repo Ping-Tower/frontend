@@ -500,10 +500,18 @@ test('theme is applied before app scripts and persists without changing the layo
   await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(255, 255, 255)')
   await page.reload()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
-  const before = await page.getByRole('heading', { level: 1 }).boundingBox()
+  await expect(
+    page.locator('header').getByRole('button', { name: /Switch to .* theme/ }),
+  ).toHaveCount(0)
+  const bounds = () =>
+    page.getByRole('heading', { level: 1 }).evaluate((heading) => {
+      const r = heading.getBoundingClientRect()
+      return { x: r.x + scrollX, y: r.y + scrollY, width: r.width, height: r.height }
+    })
+  const before = await bounds()
   await page.getByRole('button', { name: 'Switch to dark theme' }).click()
   await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(21, 23, 25)')
-  expect(await page.getByRole('heading', { level: 1 }).boundingBox()).toEqual(before)
+  expect(await bounds()).toEqual(before)
   await page.reload()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
 })

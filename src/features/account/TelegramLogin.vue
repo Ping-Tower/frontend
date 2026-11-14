@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TelegramIcon from '@/shared/ui/TelegramIcon.vue'
 import { onMounted, onBeforeUnmount, ref } from 'vue'
 import { loadTelegramLogin } from './telegram-login'
 import type { TelegramLoginSdk } from './telegram-login'
@@ -56,14 +57,7 @@ function connect() {
       :disabled="loading || busy"
       @click="sdk ? connect() : load()"
     >
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path
-          d="m21 3-4 18-6-6-4 3 1-6L21 3ZM8 12l9-6-6 9"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linejoin="round"
-        /></svg
-      >{{
+      <TelegramIcon />{{
         loading
           ? 'Loading Telegram…'
           : busy
