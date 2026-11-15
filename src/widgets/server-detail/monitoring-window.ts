@@ -1,5 +1,5 @@
 export type WindowKey = '30m' | '2h' | '12h' | '24h'
-export type BucketOption = 'auto' | '5' | '10' | '30' | '60' | '120'
+export type BucketOption = 'auto' | '5' | '10' | '30' | '60' | '120' | '300' | '600' | '900'
 export type RefreshOption = '0' | '5' | '10' | '30' | '60' | '120'
 export type RangeMode = 'preset' | 'custom'
 
@@ -17,11 +17,18 @@ export const BUCKET_OPTIONS: { value: BucketOption; label: string }[] = [
   { value: '30', label: '30 sec' },
   { value: '60', label: '1 min' },
   { value: '120', label: '2 min' },
+  { value: '300', label: '5 min' },
+  { value: '600', label: '10 min' },
+  { value: '900', label: '15 min' },
 ]
 
 export const REFRESH_OPTIONS: { value: RefreshOption; label: string }[] = [
   { value: '0', label: 'Off' },
-  ...BUCKET_OPTIONS.flatMap(({ value, label }) => (value === 'auto' ? [] : [{ value, label }])),
+  { value: '5', label: '5 sec' },
+  { value: '10', label: '10 sec' },
+  { value: '30', label: '30 sec' },
+  { value: '60', label: '1 min' },
+  { value: '120', label: '2 min' },
 ]
 
 export function isValidRange(from: Date | null, to: Date | null): boolean {

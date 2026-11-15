@@ -35,7 +35,12 @@ const dirty = computed(
     fields.some(([key]) => form.value[key] !== String(settings.value?.[key] ?? '')),
 )
 const unsaved = useUnsavedChanges(dirty)
-defineExpose({ confirmLeave: unsaved.confirmLeave })
+async function confirmLeave() {
+  const leave = await unsaved.confirmLeave()
+  if (leave) draft.value = null
+  return leave
+}
+defineExpose({ confirmLeave })
 function update(key: keyof Draft, event: Event) {
   draft.value = { ...form.value, [key]: (event.target as HTMLInputElement).value }
 }

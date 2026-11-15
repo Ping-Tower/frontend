@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, defineAsyncComponent } from 'vue'
+import { useRouter } from 'vue-router'
+import ServerDialog from '@/widgets/server-table/ServerDialog.vue'
+import DeleteServerDialog from '@/widgets/server-table/DeleteServerDialog.vue'
 import {
   useOverview,
   useServerSettings,
@@ -19,6 +22,9 @@ const ProtocolMetrics = defineAsyncComponent(
   () => import('@/widgets/server-detail/ProtocolMetrics.vue'),
 )
 const props = defineProps<{ serverId: string }>()
+const router = useRouter()
+const editing = ref(false),
+  deleting = ref(false)
 const settings = useServerSettings(() => props.serverId)
 const window = useMonitoringWindow(() => settings.data.value?.intervalSec)
 const {
@@ -41,6 +47,10 @@ const baseline = useBaseline(
 )
 const tab = ref('overview')
 const rulesPanel = ref<{ confirmLeave: () => boolean | Promise<boolean> }>()
+async function requestDelete() {
+  if (rulesPanel.value && !(await rulesPanel.value.confirmLeave())) return
+  deleting.value = true
+}
 async function selectTab(key: string) {
   if (key === tab.value) return
   if (tab.value === 'settings' && rulesPanel.value && !(await rulesPanel.value.confirmLeave()))
@@ -161,7 +171,9 @@ function onTabKey(event: KeyboardEvent, index: number) {
           <section class="card min-w-0">
             <h2 class="section-title">Latency profile</h2>
             <p class="mt-2 mb-6 text-sm text-muted">
-              Average response and P50 / P90 / P99. Drag to zoom. Missing checks remain gaps.
+              Average response and P50 / P90 / P99 within each bucket. With one latency sample, all
+              four values match. Choose a larger chart bucket to group more checks. Drag to zoom.
+              Missing checks remain gaps.
             </p>
             <MetricsChart
               :chart="overview.chart"
@@ -174,7 +186,27 @@ function onTabKey(event: KeyboardEvent, index: number) {
           :server-id="serverId"
           :from="window.filters.value.from!"
           :to="window.filters.value.to!"
-        /><CheckRules v-else ref="rulesPanel" :server-id="serverId" /></div
-    ></template>
+        />
+        <div v-else class="space-y-6">
+          <CheckRules ref="rulesPanel" :server-id="serverId" />
+          <section class="card">
+            <h2 class="section-title">Manage monitor</h2>
+            <p class="mt-2 text-sm text-muted">
+              Edit the name, target or protocol, or permanently delete this monitor.
+            </p>
+            <div class="mt-6 flex flex-wrap gap-3">
+              <button class="btn btn-outline" @click="editing = true">Edit monitor</button>
+              <button class="btn btn-outline" @click="requestDelete">Delete monitor</button>
+            </div>
+          </section>
+        </div>
+      </div>
+      <ServerDialog :open="editing" :editing="overview.target" @close="editing = false" />
+      <DeleteServerDialog
+        :server="deleting ? overview.target : null"
+        @close="deleting = false"
+        @deleted="router.replace('/app/servers')"
+      />
+    </template>
   </div>
 </template>

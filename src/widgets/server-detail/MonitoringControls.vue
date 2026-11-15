@@ -38,23 +38,24 @@ function refreshNow() {
           class="input !text-xs" /></label
       ><label class="field"
         ><span>To</span
-        ><input
-          v-model="controls.toDraft.value"
-          type="datetime-local"
-          class="input !text-xs" /></label
-      ><label class="field"
-        ><span>Chart bucket</span
+        ><input v-model="controls.toDraft.value" type="datetime-local" class="input !text-xs"
+      /></label>
+      <div class="field">
+        <span>Chart bucket</span
         ><Select
           v-model="controls.bucket.value"
           aria-label="Chart bucket"
-          :options="BUCKET_OPTIONS" /></label
-      ><label class="field"
-        ><span>Auto-refresh</span
+          :options="BUCKET_OPTIONS"
+        />
+      </div>
+      <div class="field">
+        <span>Auto-refresh</span
         ><Select
           v-model="controls.refresh.value"
           aria-label="Auto-refresh"
           :options="REFRESH_OPTIONS"
-      /></label>
+        />
+      </div>
     </div>
     <div class="mt-5 flex flex-wrap items-center gap-3">
       <button class="btn btn-sm" :disabled="!window.valid.value" @click="window.apply">

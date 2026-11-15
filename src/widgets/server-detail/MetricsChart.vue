@@ -14,6 +14,7 @@ import {
 } from 'echarts/components'
 import VChart from 'vue-echarts'
 import type { MonitoringChart } from '@/entities'
+import type { TooltipComponentFormatterCallbackParams } from 'echarts'
 use([
   CanvasRenderer,
   LineChart,
@@ -82,6 +83,21 @@ const series = computed(() =>
 const unit = computed(() =>
   props.metric === 'loss' ? '%' : props.metric === 'traffic' ? ' B' : ' ms',
 )
+function formatTooltip(params: TooltipComponentFormatterCallbackParams) {
+  const points = Array.isArray(params) ? params : [params]
+  const first = points[0]
+  const bucket = first && props.chart.buckets[first.dataIndex]
+  if (!bucket) return ''
+  const lines = [
+    new Date(bucket.bucket).toLocaleString(),
+    `Checks: ${bucket.totalChecks} · Successful: ${bucket.successChecks}`,
+    ...points.map((point) => {
+      const value = Array.isArray(point.value) ? point.value[1] : null
+      return `${point.seriesName}: ${value == null ? 'No sample' : `${Number(value).toFixed(1)}${unit.value}`}`
+    }),
+  ]
+  return lines.join('\n')
+}
 const option = computed(() => ({
   animation: false,
   aria: {
@@ -103,8 +119,7 @@ const option = computed(() => ({
     backgroundColor: palette.value.background,
     borderColor: palette.value.line,
     textStyle: { color: palette.value.line, fontSize: 12 },
-    valueFormatter: (value: unknown) =>
-      value == null ? 'No sample' : `${Number(value).toFixed(1)}${unit.value}`,
+    formatter: formatTooltip,
   },
   xAxis: {
     type: 'time',

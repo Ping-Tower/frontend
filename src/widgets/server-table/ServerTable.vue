@@ -3,17 +3,16 @@ import Select from '@/shared/ui/Select.vue'
 import { computed, ref } from 'vue'
 import type { Server } from '@/entities'
 import { PROTOCOLS, formatEndpoint } from '@/entities/status'
-import { useServers, useDeleteServer } from '@/features/monitoring/queries'
+import { useServers } from '@/features/monitoring/queries'
 import Feedback from '@/shared/ui/Feedback.vue'
 import StatusBadge from '@/shared/ui/StatusBadge.vue'
-import Modal from '@/shared/ui/Modal.vue'
+import DeleteServerDialog from './DeleteServerDialog.vue'
 defineEmits<{ add: []; edit: [server: Server] }>()
 const { data: servers, isPending, isError, refetch } = useServers()
 const search = ref(''),
   status = ref('all'),
   protocol = ref('all'),
   deleting = ref<Server | null>(null)
-const remove = useDeleteServer()
 const filtered = computed(() =>
   servers.value?.filter(
     (s) =>
@@ -25,15 +24,6 @@ const filtered = computed(() =>
 )
 function requestDelete(server: Server) {
   deleting.value = server
-  remove.reset()
-}
-function confirmDelete() {
-  if (deleting.value)
-    remove.mutate(deleting.value.id, {
-      onSuccess: () => {
-        deleting.value = null
-      },
-    })
 }
 </script>
 <template>
@@ -132,21 +122,5 @@ function confirmDelete() {
       </table>
     </div>
   </section>
-  <Modal
-    :open="!!deleting"
-    title="Delete monitor?"
-    :description="`“${deleting?.name}” and its monitoring history will be removed. This cannot be undone.`"
-    :busy="remove.isPending.value"
-    @close="deleting = null"
-    ><p v-if="remove.error.value" role="alert" class="field-error mt-4">
-      {{ remove.error.value.message }}
-    </p>
-    <div class="mt-8 flex justify-end gap-3">
-      <button class="btn btn-ghost" :disabled="remove.isPending.value" @click="deleting = null">
-        Cancel</button
-      ><button class="btn" :disabled="remove.isPending.value" @click="confirmDelete">
-        {{ remove.isPending.value ? 'Deleting…' : 'Delete monitor' }}
-      </button>
-    </div></Modal
-  >
+  <DeleteServerDialog :server="deleting" @close="deleting = null" />
 </template>

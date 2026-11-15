@@ -187,6 +187,82 @@ test('monitor detail supports tabs and empty chart data', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Ping Settings' })).toBeVisible()
   await expectNoOverflow(page)
 })
+test('larger chart buckets reach the API without changing refresh choices', async ({ page }) => {
+  await mockApi(page)
+  await page.goto('/app/servers/s1')
+  await expect(page.getByRole('heading', { name: 'Production API' })).toBeVisible()
+  for (const [label, seconds] of [
+    ['5 min', '300'],
+    ['10 min', '600'],
+    ['15 min', '900'],
+  ]) {
+    await page.getByRole('combobox', { name: 'Chart bucket', exact: true }).click()
+    const request = page.waitForRequest((req) => {
+      const url = new URL(req.url())
+      return (
+        url.pathname === '/api/servers/s1/overview' && url.searchParams.get('bucketSec') === seconds
+      )
+    })
+    await page.getByRole('option', { name: label, exact: true }).click()
+    await request
+    await expect(page.getByRole('combobox', { name: 'Chart bucket', exact: true })).toHaveText(
+      label,
+    )
+  }
+  await page.getByRole('combobox', { name: 'Auto-refresh', exact: true }).click()
+  await expect(page.getByRole('option', { name: '5 min', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('option', { name: '30 sec', exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expectNoOverflow(page)
+})
+test('monitor settings allow editing and require confirmation before deletion', async ({
+  page,
+}) => {
+  await mockApi(page)
+  let deleteRequests = 0
+  await page.route('**/api/servers/s1', async (route) => {
+    if (route.request().method() !== 'DELETE') return route.fallback()
+    deleteRequests++
+    if (deleteRequests === 1)
+      return route.fulfill({ status: 500, json: { message: 'Deletion failed. Try again.' } })
+    return route.fallback()
+  })
+  await page.goto('/app/servers/s1')
+  await page.getByRole('tab', { name: 'Settings', exact: true }).click()
+  await page.getByRole('button', { name: 'Edit monitor', exact: true }).click()
+  await expect(page.getByLabel('Host', { exact: true })).toHaveValue('api.example.com')
+  await page.getByLabel('Name', { exact: true }).fill('Renamed API')
+  await page.getByRole('button', { name: 'Update', exact: true }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Renamed API' })).toBeVisible()
+  await page.getByLabel('Interval (sec)', { exact: true }).fill('30')
+  await page.getByRole('button', { name: 'Delete monitor', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'Unsaved changes' })).toBeVisible()
+  await page.getByRole('button', { name: 'Stay on this page', exact: true }).click()
+  expect(deleteRequests).toBe(0)
+  await expect(page.getByLabel('Interval (sec)', { exact: true })).toHaveValue('30')
+  const openDelete = () => page.getByRole('button', { name: 'Delete monitor', exact: true }).click()
+  await openDelete()
+  await page.getByRole('button', { name: 'Discard and leave', exact: true }).click()
+  await expect(page.getByLabel('Interval (sec)', { exact: true })).toHaveValue('60')
+  const dialog = page.getByRole('dialog', { name: 'Delete monitor?' })
+  await expect(dialog).toContainText('Renamed API')
+  expect(deleteRequests).toBe(0)
+  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(dialog).not.toBeVisible()
+  expect(deleteRequests).toBe(0)
+  await openDelete()
+  await page.keyboard.press('Escape')
+  await expect(dialog).not.toBeVisible()
+  expect(deleteRequests).toBe(0)
+  await openDelete()
+  await dialog.getByRole('button', { name: 'Delete monitor', exact: true }).click()
+  await expect(dialog.getByRole('alert')).toBeVisible()
+  await expect(page).toHaveURL(/\/app\/servers\/s1$/)
+  await dialog.getByRole('button', { name: 'Delete monitor', exact: true }).click()
+  await expect(page).toHaveURL(/\/app\/servers$/)
+  await expect(page.getByRole('link', { name: 'Renamed API ↗' })).toHaveCount(0)
+  expect(deleteRequests).toBe(2)
+})
 test('navigation, notification preferences and integrations work', async ({ page }) => {
   await mockApi(page)
   await page.goto('/app/servers')

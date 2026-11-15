@@ -73,6 +73,8 @@
 }
 html {
   background: var(--color-surface-base);
+  /* Keep the layout width stable across routes and when dialogs lock scrolling. */
+  scrollbar-gutter: stable;
 }
 /* Theme colors change together, without partial color transitions. */
 html[data-theme] *,
