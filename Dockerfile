@@ -27,7 +27,9 @@ COPY . .
 RUN pnpm build
 
 # ── Production image ────────────────────────────────────────────────────────────
-FROM nginx:1.27-alpine AS final
+FROM nginx:stable-alpine@sha256:901e593c95dc85f5a729f5765516321366ef4ac401821431d408897e95287d0a AS final
+
+RUN apk upgrade --no-cache libxslt
 
 COPY --from=build /app/dist /usr/share/nginx/html
 
