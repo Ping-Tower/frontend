@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onErrorCaptured, ref } from 'vue'
+import { ConfigProvider } from 'reka-ui'
 import { useRealtime } from '@/features/monitoring/use-realtime'
 import Toasts from '@/shared/ui/Toasts.vue'
 useRealtime()
@@ -13,11 +14,14 @@ function reload() {
 }
 </script>
 <template>
-  <div v-if="failed" class="app-shell justify-center gap-5">
-    <h1 class="page-title">Something went wrong.</h1>
-    <p class="text-muted">Reload the page to try again.</p>
-    <button class="btn w-fit" @click="reload">Reload page</button>
-  </div>
-  <RouterView v-else />
-  <Toasts />
+  <!-- html reserves the scrollbar gutter; Reka only needs to lock scrolling. -->
+  <ConfigProvider :scroll-body="{ padding: 0, margin: 0 }">
+    <div v-if="failed" class="app-shell justify-center gap-5">
+      <h1 class="page-title">Something went wrong.</h1>
+      <p class="text-muted">Reload the page to try again.</p>
+      <button class="btn w-fit" @click="reload">Reload page</button>
+    </div>
+    <RouterView v-else />
+    <Toasts />
+  </ConfigProvider>
 </template>

@@ -8,7 +8,16 @@ export default defineConfig({
   reporter: 'list',
   use: { baseURL: 'http://127.0.0.1:4173', trace: 'retain-on-failure' },
   projects: [
-    { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'desktop',
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: {
+          ignoreDefaultArgs: ['--hide-scrollbars'],
+          args: ['--disable-features=OverlayScrollbar'],
+        },
+      },
+    },
     { name: 'mobile', use: { ...devices['iPhone 13'], defaultBrowserType: 'chromium' } },
   ],
   webServer: {

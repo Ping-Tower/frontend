@@ -137,6 +137,38 @@ test('protects private routes', async ({ page }) => {
   await page.goto('/app/servers')
   await expect(page).toHaveURL(/\/login$/)
 })
+test('layout stays stable when dropdowns and dialogs lock page scrolling', async ({ page }) => {
+  await mockApi(page)
+  await page.goto('/app/servers')
+  await expect(page.getByRole('link', { name: 'Production API ↗' })).toBeVisible()
+  await page.evaluate(() => document.fonts.ready)
+  await page.addStyleTag({ content: 'body { min-height: 200vh; }' })
+  const header = page.locator('.app-header')
+  const measure = () =>
+    header.evaluate((element) => {
+      const { x, width } = element.getBoundingClientRect()
+      return { x, width }
+    })
+  const original = await measure()
+  for (const name of ['Filter by status', 'Filter by protocol']) {
+    await page.getByRole('combobox', { name }).click()
+    await expect(page.getByRole('listbox')).toBeVisible()
+    await expect.poll(measure).toEqual(original)
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('listbox')).not.toBeVisible()
+    await expect.poll(measure).toEqual(original)
+  }
+  await page.getByRole('button', { name: '+ Add monitor', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'Add monitor' })).toBeVisible()
+  await expect.poll(measure).toEqual(original)
+  await page.getByRole('combobox', { name: 'Protocol', exact: true }).click()
+  await expect(page.getByRole('listbox')).toBeVisible()
+  await expect.poll(measure).toEqual(original)
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).not.toBeVisible()
+  await expect.poll(measure).toEqual(original)
+})
 test('logs in, restores a session and logs out', async ({ page }) => {
   await mockApi(page, false)
   await page.goto('/login')
